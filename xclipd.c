@@ -10,6 +10,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
+#include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -19,26 +21,15 @@
 #include <X11/Xmu/Atoms.h>
 #include <X11/extensions/Xfixes.h> 
 
+#include "xclipd.h"
 #include "xclib.h"
 
 Display	*display;
 Window win, root;
 size_t buffer_size; 
-
-struct clip_entry {
-	char *entry;
-	size_t len;
-	struct clip_entry *next;
-};
-
-struct stack {
-	struct clip_entry *top;
-	size_t size;
-};
-
-
-
+int running;
 static struct stack *clip_stack;
+char * sock_path;
 
 static int stack_init() {
 	if((clip_stack = (struct stack *) malloc(sizeof (struct stack))) == NULL)
@@ -83,21 +74,23 @@ static int push(char *s, size_t l) {
 	/* Suppress the lastone if needed */
 	if(clip_stack->size == buffer_size) {
 		struct clip_entry *c = clip_stack->top;
+		struct clip_entry *prev;
 		while(c->next != NULL){
 			c = c->next;
+			prev = c;
 		}
 		free(c->entry);
 		free(c);
+		prev->next = NULL;
 		clip_stack->size--;
 	}
 	next->next = clip_stack->top;
 	clip_stack->top = next;
 	clip_stack->size++;
-	printf("%s\n",clip_stack->top->entry);
 	return 0;
 }
 
-static void ulisten(const char *path) {
+static void ulisten(void) {
 	int fd, len, cfd, clen;  
 	char buffer[4];
 	struct sockaddr_un server, client;
@@ -105,22 +98,24 @@ static void ulisten(const char *path) {
 
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
 		perror("socket");
-		return;
+		exit(1);
 	}
 	bzero(&server, sizeof(struct sockaddr_un));
 	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, path);
+	strcpy(server.sun_path, sock_path);
 
 	len = strlen(server.sun_path) + sizeof(server.sun_family);
 	if (bind(fd, (struct sockaddr *) &server, len) < 0) {
 		perror("bind");
-		return;
+		exit(1);
 	}
 	listen(fd, 5);
 	for(;;){
 		clen = sizeof(client);
-		if((cfd = accept(fd, (struct sockaddr *) &client, &clen)) < 0)
-			return;
+		if((cfd = accept(fd, (struct sockaddr *) &client, &clen)) < 0){
+			perror("accept");
+			exit(1);
+		}
 		else {
 			read(cfd, buffer, 3);
 			if(strcmp("get", buffer) == 0){
@@ -137,7 +132,7 @@ static void ulisten(const char *path) {
 				}
 			}
 			else if(strcmp("del", buffer) == 0){
-				clear();
+				stack_clear();
 			}
 			else write(cfd,"Protocol error\n",16);
 			close(cfd);
@@ -146,7 +141,7 @@ static void ulisten(const char *path) {
 }
 
 
-int clear(void) {
+int stack_clear(void) {
 	struct clip_entry *supp;
 	if(clip_stack->size == 0)
 		return 0;
@@ -156,8 +151,12 @@ int clear(void) {
 		clip_stack->size--;
 		free(supp->entry);
 		free(supp);
-		clear();
+		stack_clear();
 	}
+}
+
+void stack_clear_sig(int signum) {
+	stack_clear();
 }
 
 
@@ -192,7 +191,8 @@ static void get_selection() {
 			break;
 	}
 	if(sel_len) {
-		push(sel_buf, sel_len);
+		if(push(sel_buf, sel_len) > 0)
+			fprintf(stderr, "push problem\n");
 		if (sseln == XA_STRING)
 			XFree(sel_buf);
 		else
@@ -200,19 +200,10 @@ static void get_selection() {
 	}
 }
 
-int main(void) {
-
-	int screen, dummy, event_base, ver_major, ver_minor;
+static int xlaunch(void) {
+	int dummy, event_base, ver_major, ver_minor;
 	XEvent	event;
 	XFixesSelectionNotifyEvent *sevent;
-	Atom atom;
-	pthread_t server;
-
-	buffer_size = 50;
-	stack_init();
-
-
-
 	if ((display = XOpenDisplay(NULL)) == NULL) {
 		fprintf(stderr, "Can't open Display\n");
 		XCloseDisplay(display);
@@ -231,8 +222,7 @@ int main(void) {
 	}
 	win = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, 0, 0);
 	XFixesSelectSelectionInput(display, win, XA_PRIMARY, XFixesSetSelectionOwnerNotifyMask);
-	pthread_create(&server, NULL, ulisten, "/home/joris/clip.sock");
-	for(;;) {
+	for(;;){
 		XNextEvent(display, &event);
 		if (event.type == XFixesSelectionNotify + event_base)
 		{
@@ -244,12 +234,73 @@ int main(void) {
 		}
 
 	}
-	/* todo deal with sigint to exit correctly
-	 * and execute the code below */
-	clear();
+	return 0;
+}
+
+void clean_exit(int signum) {
+	stack_clear();
 	free(clip_stack);
+	unlink(sock_path);
 	XDestroyWindow(display, win);
 	XCloseDisplay(display);
+}
+
+
+
+void usage(void) {
+	fprintf(stderr, "Usage:\n"
+			"xclipd -n number of entries -s " 
+			"/path/to/socket.sock [-d run has a daemon]\n"
+	       );
+	exit(1);
+}
+
+
+int main(int argc, char **argv) {
+
+	
+	pthread_t server;
+	int c, dflag = 0;
+
+	signal(SIGINT, clean_exit);
+	signal(SIGTERM, clean_exit);
+	signal(SIGHUP, stack_clear);
+
+
+
+	while ((c = getopt (argc, argv, "ds:n:")) != -1){
+		switch (c) {
+		case 'd':
+			dflag = 1;
+			break;
+		case 'n':
+			buffer_size = atoi(optarg);
+			break;
+		case 's':
+			sock_path = optarg;
+			break;
+		default :
+			usage();
+		}
+	}
+	if(buffer_size == 0 ||
+			sock_path == NULL)
+		usage();
+
+
+	running = 0;
+	stack_init();
+	if(dflag > 0) 
+		daemon(0,0);
+	pthread_create(&server, NULL, ulisten, NULL);
+	if(xlaunch() > 0)
+		return 1;
+	
 	return 0;
+
+
+
+
+
 }
 
