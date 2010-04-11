@@ -10,7 +10,7 @@
 	<style type="text/css">
 		body {
   		margin-top: 1.0em;
-  		background-color: #3c2c06;
+  		background-color: white;
 		  font-family: "Helvetica,Arial,FreeSans";
   		color: #ffffff;
     }
@@ -49,26 +49,27 @@
       <span class="small">by <a href="http://github.com/rmdir">rmdir</a></span></h1>
 
     <div class="description">
-      A tool for building klipper like with lite window managers 
+      A tool for building klipper like clipboard for liteweight window managers
     </div>
 
-    <p>It's provides a toolkit independant daemon that listen on a local 
-socket and collect selection buffer entries. 
-You can communicate with the daemon via 2 commands :
-- get : returns stored lines
-- del : clear the buffers</p><h2>Dependencies</h2>
+    <p>It provides a toolkit independant daemon that listen on a local 
+    socket and collect selection buffer entries. <br />
+    You can communicate with the daemon via 2 commands :<br />
+    - get : returns stored lines<br />
+    - del : clear the buffers<br /></p><h2>Dependencies</h2>
 <p>It's only depends on xorg libraries and classic Unix stuffs has pthreads</p>
 <h2>Install</h2>
-<p>- get the sources 
-- make && make install (or install xclipd wherever you want)
-- xclipd -n number of entries to store -s /path/to/the/socket.sock -d 
+<p>- get the sources <br />
+
+- make && make install (or install xclipd wherever you want) <br />
+- xclipd -n number of entries to store -s /path/to/the/socket.sock -d <br /> 
 </p>
 <h2>License</h2>
 <p>beerware</p>
 <h2>Authors</h2>
 <p>Joris Dedieu</p>
 <h2>Contact</h2>
-<p> (joris.dedieu@gmail.com)<br/>      </p>
+<p> (joris.dedieu@gmail.com)<br/>      </p>
 
 
     <h2>Download</h2>
