@@ -1,0 +1,33 @@
+INSTALLATION :
+
+You need xorg headers files
+type make and copy xcilpd file where ever you want
+
+USAGE :
+
+xcilpd -s /home/joris/clip.sock -n 2000
+Then you can use the get command to get
+the selections and the del command to clear 
+the sellection stack.
+
+[joris@localhost ~]$ echo "get"|nc -U /home/joris/clip.sock
+echo "get"|nc -U /home/joris/clip.sock
+clip.sock
+joris@localhost
+echo
+[joris@localhost ~]$ echo "del"|nc -U /home/joris/clip.sock
+
+
+CREDITS :
+
+Files :
+xcdef.h  
+xclib.c  
+xclib.h  
+xcprint.h
+ are from xclip (http://xclip.sourceforge.net)
+
+XFixes usage cames from 
+http://wahjava.wordpress.com/2006/08/
+
+
