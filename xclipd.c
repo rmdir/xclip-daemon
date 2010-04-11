@@ -42,16 +42,21 @@ static int stack_init() {
 
 static int push(char *s, size_t l) {
 	struct clip_entry *next;
+	int newline = 0;
 	if ((next = (struct clip_entry *) malloc(sizeof (struct clip_entry))) == NULL)
 		return 1;
 	else 
 		bzero(next, sizeof(struct clip_entry));
-	next->len = l+1;
+	if(s[l-1] != '\n') 
+		newline = 1;
+	next->len = l+1+newline;
 	if ((next->entry = (char *) malloc((next->len)*sizeof(char))) == NULL)
 		      return 1;
 	else {
 		strncpy(next->entry, s,next->len);
-		next->entry[l]='\0';
+		if(newline > 0)
+			next->entry[next->len-2] = '\n';
+		next->entry[next->len-1]='\0';
 	}
 	/* If the same string is selected twice
 	 * (maybe a bug in get_selection)
@@ -112,18 +117,20 @@ static void ulisten(const char *path) {
 			if(strcmp("get", buffer) == 0){
 				if (clip_stack->size > 0){
 					c = clip_stack->top;
-					while(c->next != NULL){
+					for(;;){
 						write(cfd, c->entry, c->len);
-						write(cfd, '\n', 1);
-						printf("arrg : %s", c->entry); 
-						c = c->next;
+						if(c->next == NULL){
+							break;
+						}
+						else 
+							c = c->next;
 					}
 				}
 			}
 			else if(strcmp("del", buffer) == 0){
 				clear();
 			}
-			else write(cfd,"Protocol error",15);
+			else write(cfd,"Protocol error\n",16);
 			close(cfd);
 		}
 	}
@@ -176,16 +183,11 @@ static void get_selection() {
 			break;
 	}
 	if(sel_len) {
-		/*char *dest = malloc(sizeof(char)*sel_len+1);
-		strncpy(dest, sel_buf,sel_len);
-		dest[sel_len]='\0';
-		printf("%s\n",dest);*/
 		push(sel_buf, sel_len);
 		if (sseln == XA_STRING)
 			XFree(sel_buf);
 		else
 			free(sel_buf);
-		//free(dest);
 	}
 }
 
