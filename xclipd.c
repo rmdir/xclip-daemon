@@ -27,8 +27,8 @@
 Display	*display;
 Window win, root;
 size_t buffer_size; 
-int running;
-static struct stack *clip_stack;
+volatile struct stack *clip_stack;
+
 char * sock_path;
 
 static int stack_init() {
@@ -40,7 +40,7 @@ static int stack_init() {
 	}
 }
 
-static int push(char *s, size_t l) {
+static int push(const char *s, unsigned long l) {
 	struct clip_entry *next;
 	int newline = 0;
 	if ((next = (struct clip_entry *) malloc(sizeof (struct clip_entry))) == NULL)
@@ -91,7 +91,8 @@ static int push(char *s, size_t l) {
 }
 
 static void ulisten(void) {
-	int fd, len, cfd, clen;  
+	size_t len, clen;  
+	socklen_t fd, cfd;
 	char buffer[4];
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
@@ -140,8 +141,8 @@ static void ulisten(void) {
 	}
 }
 
-
-int stack_clear(void) {
+/* Needs something like a mutex */
+static int stack_clear(void) {
 	struct clip_entry *supp;
 	if(clip_stack->size == 0)
 		return 0;
@@ -155,7 +156,7 @@ int stack_clear(void) {
 	}
 }
 
-void stack_clear_sig(int signum) {
+static void stack_clear_sig(int signum) {
 	stack_clear();
 }
 
@@ -163,7 +164,7 @@ void stack_clear_sig(int signum) {
 /* Directly from xclip 
  * Clean up need
  */
-static void get_selection() {
+static void get_selection(void) {
 	unsigned char *sel_buf;	/* buffer for selection data */
 	unsigned long sel_len = 0;	/* length of sel_buf */
 	XEvent evt;			/* X Event Structures */
@@ -232,7 +233,6 @@ static int xlaunch(void) {
 				get_selection();
 			}
 		}
-
 	}
 	return 0;
 }
@@ -243,6 +243,7 @@ void clean_exit(int signum) {
 	unlink(sock_path);
 	XDestroyWindow(display, win);
 	XCloseDisplay(display);
+	exit(0);
 }
 
 
@@ -264,7 +265,7 @@ int main(int argc, char **argv) {
 
 	signal(SIGINT, clean_exit);
 	signal(SIGTERM, clean_exit);
-	signal(SIGHUP, stack_clear);
+	signal(SIGHUP, stack_clear_sig);
 
 
 
@@ -288,10 +289,15 @@ int main(int argc, char **argv) {
 		usage();
 
 
-	running = 0;
 	stack_init();
-	if(dflag > 0) 
+	if(dflag > 0){ 
+		pid_t pid = fork();
+		if(pid > 0){
+			printf("%d\n", pid+1);
+			exit(0);
+		}
 		daemon(0,0);
+	}
 	pthread_create(&server, NULL, ulisten, NULL);
 	if(xlaunch() > 0)
 		return 1;

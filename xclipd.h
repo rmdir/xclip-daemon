@@ -25,16 +25,13 @@ struct stack {
 
 
 
-static struct stack *clip_stack;
-char * sock_path;
-
-void usage(void);
-void clean_exit(int signum);
+static void usage(void);
+static void clean_exit(int signum);
 static int xlaunch(void);
 static void get_selection(void);
-void stack_clear_sig(int signum);
-int stack_clear(void);
+static void stack_clear_sig(int signum);
+static int stack_clear(void);
 static void ulisten(void);
-static int push(char *s, size_t l);
+static int push(const char *s, unsigned long l); 
 static int stack_init(void); 
 
