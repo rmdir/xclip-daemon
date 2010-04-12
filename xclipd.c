@@ -185,7 +185,7 @@ static int u_write(int socket,const char* format, ...) {
 	if ((p = malloc(MAX_CLIP_SIZE * sizeof (char) )) == NULL)
 		return 1;
 	va_start(ap, format);
-	(void) vsnprintf(p, 128, format, ap);
+	(void) vsnprintf(p, MAX_CLIP_SIZE, format, ap);
 	va_end(ap);
 
 	if(write(socket, p, strlen(p))) {
