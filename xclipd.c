@@ -7,22 +7,8 @@
  * ----------------------------------------------------------------------------
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <unistd.h>
-#include <pthread.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <X11/Xlib.h>
-#include <X11/Xatom.h> 
-#include <X11/Xmu/Atoms.h>
-#include <X11/extensions/Xfixes.h> 
 
 #include "xclipd.h"
-#include "xclib.h"
 
 Display	*display;
 Window win, root;
@@ -127,27 +113,51 @@ static void ulisten(void) {
 
 			if( strcmp("get", cmd ) == 0 ) {
 				action = ACTION_GET;
-				printf("action = get (%s)\n",cmd);
 			} else if( strcmp("set",cmd) == 0 ) {
-				printf("action = set\n");
 				action = ACTION_SET;
 			} else if( strcmp("del",cmd) == 0 ) {
-				printf("action = del\n");
 				action = ACTION_DEL;
+			} else if( strcmp("siz",cmd) == 0 ) {
+				action = ACTION_SIZE;
 			}
 			switch(action) {
 				case ACTION_GET:
-					if (clip_stack->size > 0){
-						c = clip_stack->top;
-						for(;;){
-							write(cfd, c->entry, c->len);
-							if(c->next == NULL){
-								break;
+					// Client want all off the list
+					if(readed < 5) {
+						if (clip_stack->size > 0){
+							c = clip_stack->top;
+							for(;;){
+								u_write(cfd, c->entry);
+								if(c->next == NULL){
+									break;
+								}
+								else 
+									c = c->next;
 							}
-							else 
-								c = c->next;
+						}
+					}else
+					// Client want a specific clip
+					if ( readed > 4 ) {
+						char * clip_number = (char *) malloc ( (readed - 4) * sizeof(char));
+						strncpy( clip_number, buffer + 4, (readed - 4) );
+						int clip_nb = atoi(clip_number);
+						free(clip_number);
+						if(clip_stack->size > clip_nb) {
+							c = clip_stack->top;
+							int i=0;
+							for(i=0; i < clip_nb; i++ ) {
+								if(c->next == NULL) {
+									break;
+								}else{
+									c = c->next;
+								}
+							}
+							u_write(cfd, c->entry);
+						} else{
+							u_write(cfd, "Out of range clip\n");
 						}
 					}
+
 					break;
 				case ACTION_DEL:
 					stack_clear();
@@ -156,17 +166,37 @@ static void ulisten(void) {
 					strncpy (clip_buff, buffer + 4 , (readed - 4));
 					stack_add(clip_buff);
 					break;
+				case ACTION_SIZE:
+					u_write(cfd,"%d",clip_stack->size);
+					break;
 				default:
-					write(cfd,"Protocol error\n",16);
+					u_write(cfd,"Protocol error\n");
 			}
 
 		}
 	}
 }
 
+/* Write to socket */
+static int u_write(int socket,const char* format, ...) {
+	va_list ap;
+	char *p;
+	// resolv format
+	if ((p = malloc(MAX_CLIP_SIZE * sizeof (char) )) == NULL)
+		return 1;
+	va_start(ap, format);
+	(void) vsnprintf(p, 128, format, ap);
+	va_end(ap);
+
+	if(write(socket, p, strlen(p))) {
+		return 0;
+	} else{
+		return 1;
+	}
+}
+
 /* Add clip to stack */
 static int stack_add(const char * to_add) {
-	printf("I'm here\n");
 	push(to_add, strlen(to_add));
 }
 
