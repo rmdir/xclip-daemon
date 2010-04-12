@@ -93,7 +93,9 @@ static int push(const char *s, unsigned long l) {
 static void ulisten(void) {
 	size_t len, clen;  
 	socklen_t fd, cfd;
-	char buffer[4];
+	char buffer[MAX_CLIP_SIZE + 4];
+	char clip_buff[MAX_CLIP_SIZE];
+	char cmd[4];
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
 
@@ -118,27 +120,54 @@ static void ulisten(void) {
 			exit(1);
 		}
 		else {
-			read(cfd, buffer, 3);
-			if(strcmp("get", buffer) == 0){
-				if (clip_stack->size > 0){
-					c = clip_stack->top;
-					for(;;){
-						write(cfd, c->entry, c->len);
-						if(c->next == NULL){
-							break;
+			int action=0;
+			// Get clip + command size
+			int readed = read(cfd, buffer, MAX_CLIP_SIZE + 4 );
+			strncpy(cmd,buffer,3);
+
+			if( strcmp("get", cmd ) == 0 ) {
+				action = ACTION_GET;
+				printf("action = get (%s)\n",cmd);
+			} else if( strcmp("set",cmd) == 0 ) {
+				printf("action = set\n");
+				action = ACTION_SET;
+			} else if( strcmp("del",cmd) == 0 ) {
+				printf("action = del\n");
+				action = ACTION_DEL;
+			}
+			switch(action) {
+				case ACTION_GET:
+					if (clip_stack->size > 0){
+						c = clip_stack->top;
+						for(;;){
+							write(cfd, c->entry, c->len);
+							if(c->next == NULL){
+								break;
+							}
+							else 
+								c = c->next;
 						}
-						else 
-							c = c->next;
 					}
-				}
+					break;
+				case ACTION_DEL:
+					stack_clear();
+					break;
+				case ACTION_SET:
+					strncpy (clip_buff, buffer + 4 , (readed - 4));
+					stack_add(clip_buff);
+					break;
+				default:
+					write(cfd,"Protocol error\n",16);
 			}
-			else if(strcmp("del", buffer) == 0){
-				stack_clear();
-			}
-			else write(cfd,"Protocol error\n",16);
-			close(cfd);
+
 		}
 	}
+}
+
+/* Add clip to stack */
+static int stack_add(const char * to_add) {
+	printf("I'm here\n");
+	push(to_add, strlen(to_add));
 }
 
 /* Needs something like a mutex */
@@ -162,7 +191,7 @@ static void stack_clear_sig(int signum) {
 
 
 /* Directly from xclip 
- * Clean up need
+ * Clean up needed
  */
 static void get_selection(void) {
 	unsigned char *sel_buf;	/* buffer for selection data */
@@ -239,7 +268,7 @@ static int xlaunch(void) {
 
 void clean_exit(int signum) {
 	stack_clear();
-	free(clip_stack);
+	free((void *)clip_stack);
 	unlink(sock_path);
 	XDestroyWindow(display, win);
 	XCloseDisplay(display);
@@ -298,7 +327,7 @@ int main(int argc, char **argv) {
 		}
 		daemon(0,0);
 	}
-	pthread_create(&server, NULL, ulisten, NULL);
+	pthread_create(&server, NULL, (void *)ulisten, NULL);
 	if(xlaunch() > 0)
 		return 1;
 	

@@ -7,6 +7,12 @@
  * ----------------------------------------------------------------------------
  */
 
+#define ACTION_GET 1
+#define ACTION_DEL 2
+#define ACTION_SET 3
+
+#define MAX_CLIP_SIZE 1024
+
 Display	*display;
 Window win, root;
 size_t buffer_size; 
@@ -31,6 +37,7 @@ static int xlaunch(void);
 static void get_selection(void);
 static void stack_clear_sig(int signum);
 static int stack_clear(void);
+static int stack_add(const char * to_add);
 static void ulisten(void);
 static int push(const char *s, unsigned long l); 
 static int stack_init(void); 
