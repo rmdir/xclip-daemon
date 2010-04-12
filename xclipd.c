@@ -206,15 +206,22 @@ static int stack_add(const char * to_add) {
 /* Needs something like a mutex */
 static int stack_clear(void) {
 	struct clip_entry *supp;
-	if(clip_stack->size == 0)
+	if(clip_stack == NULL ) {
 		return 0;
-	else {
-		supp = clip_stack->top;
-		clip_stack->top = supp->next;
-		clip_stack->size--;
-		free(supp->entry);
-		free(supp);
-		stack_clear();
+	}
+	if(clip_stack->size == 0) {
+		return 0;
+	}else {
+		if( clip_stack->top != NULL ) {
+			supp = clip_stack->top;
+			clip_stack->top = supp->next;
+			clip_stack->size--;
+			free(supp->entry);
+			free(supp);
+			return stack_clear();
+		}else{
+			return 0;
+		}
 	}
 }
 
@@ -302,7 +309,9 @@ static int xlaunch(void) {
 void clean_exit(int signum) {
 	stack_clear();
 	free((void *)clip_stack);
-	unlink(sock_path);
+	if(sock_path != 0) {
+		unlink(sock_path);
+	}
 	XDestroyWindow(display, win);
 	XCloseDisplay(display);
 	exit(0);
