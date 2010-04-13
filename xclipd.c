@@ -16,6 +16,7 @@
 Display	*display;
 Window win, root;
 size_t buffer_size; 
+pthread_t server;
 volatile struct stack *clip_stack;
 
 char * sock_path;
@@ -56,7 +57,7 @@ static int push(const char *s, unsigned long l) {
 				/*Abort*/
 				free(next->entry);
 				free(next);
-				return 1;
+				return -1;
 			}
 		}
 	}
@@ -243,24 +244,12 @@ static void get_selection(void) {
 	Atom sseln = XA_PRIMARY; 
 	Atom target = XA_UTF8_STRING(display);
 
-	for(;;) {
-		/* only get an event if xcout() is doing something */
-		if(context != XCLIB_XCOUT_NONE)
-			XNextEvent(display, &evt);
-		/* fetch the selection, or part of it */
+	xcout(display, win, evt, sseln, target, &sel_buf, &sel_len, &context);
+	if(context != XCLIB_XCOUT_NONE){
+		XNextEvent(display, &evt);
 		xcout(display, win, evt, sseln, target, &sel_buf, &sel_len, &context);
-
-		/* fallback is needed. set XA_STRING to target and restart the loop. */
-		if(context == XCLIB_XCOUT_FALLBACK) {
-			context = XCLIB_XCOUT_NONE;
-			target = XA_STRING;
-			continue;
-		}
-
-		/* only continue if xcout() is doing something */
-		if(context == XCLIB_XCOUT_NONE)
-			break;
 	}
+
 	if(sel_len) {
 		if(push(sel_buf, sel_len) > 0)
 			fprintf(stderr, "push problem\n");
@@ -277,7 +266,6 @@ static int xlaunch(void) {
 	XFixesSelectionNotifyEvent *sevent;
 	if ((display = XOpenDisplay(NULL)) == NULL) {
 		fprintf(stderr, "Can't open Display\n");
-		XCloseDisplay(display);
 		return 1;
 	}
 	root = DefaultRootWindow(display);
@@ -314,7 +302,7 @@ void clean_exit(int signum) {
 		unlink(sock_path);
 	}
 	XDestroyWindow(display, win);
-	XCloseDisplay(display);
+	if(display) XCloseDisplay(display);
 	exit(0);
 }
 
@@ -332,7 +320,6 @@ void usage(void) {
 int main(int argc, char **argv) {
 
 	
-	pthread_t server;
 	int c, dflag = 0;
 
 	signal(SIGINT, clean_exit);
