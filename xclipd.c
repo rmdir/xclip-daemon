@@ -16,7 +16,6 @@
 Display	*display;
 Window win, root;
 size_t buffer_size; 
-pthread_t server;
 volatile struct stack *clip_stack;
 
 char * sock_path;
@@ -321,6 +320,7 @@ int main(int argc, char **argv) {
 
 	
 	int c, dflag = 0;
+	pthread_t server;
 
 	signal(SIGINT, clean_exit);
 	signal(SIGTERM, clean_exit);
