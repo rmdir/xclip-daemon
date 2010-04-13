@@ -13,7 +13,7 @@ xcilpd -s /home/joris/clip.sock -n 2000 -d
 
 Then you can use the get command to get
 the selections and the del command to clear 
-the sellection stack.
+the selection stack.
 
 $ echo "get"|nc -U /path/to/socket.sock
 toto
