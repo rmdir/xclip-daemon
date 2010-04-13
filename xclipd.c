@@ -175,6 +175,7 @@ static void ulisten(void) {
 				default:
 					u_write(cfd,"Protocol error\n");
 			}
+			close(cfd);
 
 		}
 	}
