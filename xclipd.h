@@ -9,6 +9,8 @@
  * $Id$
  *
  */
+
+//unix
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -20,19 +22,32 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+
+//x11
 #include <X11/Xlib.h>
 #include <X11/Xatom.h> 
 #include <X11/Xmu/Atoms.h>
 #include <X11/extensions/Xfixes.h> 
 
+//libcurl
+#ifdef WITH_TWITTER
+#include <curl/curl.h>
+#include <curl/types.h>
+#include <curl/easy.h>
+#endif /* WITH_TWITTER */
+
 #include "xclib.h"
 
+/* maybe an enum here ? */
 #define ACTION_GET 1
 #define ACTION_DEL 2
 #define ACTION_SET 3
 #define ACTION_SIZE 4
+#ifdef WITH_TWITTER
+#define ACTION_TWIT 5
+#endif /* WITH_TWITTER */
 
-#define MAX_CLIP_SIZE 1024
+#define MAX_STACK_SIZE 1024
 
 Display	*display;
 Window win, root;
@@ -52,16 +67,16 @@ struct stack {
 
 
 
+static int stack_init(void); 
+static int netprintf(int socket,const char* format, ...);
+static char * netread(int socket);
 static void usage(void);
 static void clean_exit(int signum);
-static int xlaunch(void);
 static void get_selection(void);
 static void stack_clear_sig(int signum);
 static int stack_clear(void);
-static int stack_add(const char * to_add);
+int stack_add(const char * to_add);
 static void ulisten(void);
 static int push(const char *s, unsigned long l); 
-static int stack_init(void); 
-static int u_write(int socket,const char* format, ...);
-static int netprintf(int socket,const char* format, ...);
+static int xlaunch(void);
 

@@ -78,9 +78,7 @@ static int push(const char *s, unsigned long l) {
 static void ulisten(void) {
 	size_t len, clen;  
 	socklen_t fd, cfd;
-	char buffer[MAX_CLIP_SIZE + 4];
-	char clip_buff[MAX_CLIP_SIZE];
-	char cmd[4];
+	char *buffer, *clip_buff, *cmd, *args;
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
 
@@ -106,10 +104,24 @@ static void ulisten(void) {
 		}
 		else {
 			int action=0;
-			// Get clip + command size
-			int readed = read(cfd, buffer, MAX_CLIP_SIZE + 4 );
-			strncpy(cmd,buffer,3);
-
+			// Get clip command 
+			if((buffer=netread(cfd)) == NULL){
+				close(cfd);
+				continue;
+			}
+			if((cmd = (char *) malloc(sizeof(char)*3)) == NULL){
+				perror("malloc");
+				continue;
+			}
+			cmd=strncpy(cmd, buffer, (size_t) 3);
+			cmd[3]='\0';
+			if(strlen(buffer) > 3){
+				if((args = (char *) malloc(sizeof(char) * (strlen(buffer) -3))) == NULL){
+					perror("malloc");
+					continue;
+				}
+				args = strndup(buffer + 3, strlen(buffer) -3);
+			}
 			if( strcmp("get", cmd ) == 0 ) {
 				action = ACTION_GET;
 			} else if( strcmp("set",cmd) == 0 ) {
@@ -118,35 +130,42 @@ static void ulisten(void) {
 				action = ACTION_DEL;
 			} else if( strcmp("siz",cmd) == 0 ) {
 				action = ACTION_SIZE;
+#ifdef WITH_TWITTER
+			} else if( trcmp("twt", cmd) == 0 ) {
+				action = ACTION_TWIT
+#endif /* WITH_TWITTER */
 			}
 			switch(action) {
 				case ACTION_GET:
 					// Client want all off the list
-					if(readed < 5) {
+					if(args == NULL) {
 						if (clip_stack->size > 0){
 							c = clip_stack->top;
 							for(;;){
 								netprintf(cfd, c->entry);
 								if(c->next == NULL){
-									break;
+									continue;
 								}
 								else 
 									c = c->next;
 							}
 						}
-					}else
+					}
 					// Client want a specific clip
-					if ( readed > 4 ) {
-						char * clip_number = (char *) malloc ( (readed - 4) * sizeof(char));
-						strncpy( clip_number, buffer + 4, (readed - 4) );
-						int clip_nb = atoi(clip_number);
-						free(clip_number);
+					else {
+						int i;
+						for(i = 0; i < strlen(args); i++){
+							if(!isdigit(args[i])){
+								netprintf(cfd,"Protocol error\n");
+							}
+						}
+						int clip_nb = atoi(args);
 						if(clip_stack->size > clip_nb) {
 							c = clip_stack->top;
 							int i=0;
 							for(i=0; i < clip_nb; i++ ) {
 								if(c->next == NULL) {
-									break;
+									continue;
 								}else{
 									c = c->next;
 								}
@@ -156,26 +175,72 @@ static void ulisten(void) {
 							netprintf(cfd, "Out of range clip\n");
 						}
 					}
-
 					break;
 				case ACTION_DEL:
 					stack_clear();
 					break;
 				case ACTION_SET:
-					strncpy (clip_buff, buffer + 4 , (readed - 4));
-					stack_add(clip_buff);
+					stack_add(args);
 					break;
 				case ACTION_SIZE:
 					netprintf(cfd,"%d",clip_stack->size);
 					break;
+#ifdef WITH_TWITTER
+				case ACTION_TWIT:
+					break;
+#endif
 				default:
 					netprintf(cfd,"Protocol error\n");
 			}
+			free(args);
+			free(cmd);
+			free(buffer);
 			close(cfd);
 
 		}
 	}
 }
+
+static char *netread(int socket){
+	char *buffer, c;
+	size_t len=0;
+	if((buffer = (char *) malloc(sizeof(char))) == NULL){
+		perror("malloc");
+		return NULL;
+	}
+	for(;;){
+		read(socket,&c, 1);
+		if(c == ':')
+		       break;
+		if(isdigit(c))
+			len = 10 * len + atoi(&c);	
+		else {
+			fprintf(stderr, "Not a netstring\n");
+			return NULL;
+		}
+	}
+	if(len > 0){
+		if((buffer = (char *) malloc(sizeof(char) * (len +1))) == NULL){
+			perror("malloc");
+			return NULL;
+		}
+		read(socket, buffer, len + 1);
+		if(buffer[len] != ','){
+			fprintf(stderr, "Not a netstring\n");
+			return NULL;
+		}
+		buffer[len +1] = '\0';
+		return buffer;
+	}
+	fprintf(stderr, "Not a netstring\n");
+	return NULL;
+}
+
+
+
+
+	       		
+	
 
 /* Write to socket */
 static int netprintf(int socket, const char* format, ...){
@@ -239,7 +304,7 @@ static int netprintf(int socket, const char* format, ...){
 
 
 /* Add clip to stack */
-static int stack_add(const char * to_add) {
+int stack_add(const char * to_add) {
 	push(to_add, strlen(to_add));
 }
 
@@ -374,6 +439,13 @@ int main(int argc, char **argv) {
 			break;
 		case 'n':
 			buffer_size = atoi(optarg);
+			if(buffer_size > MAX_STACK_SIZE){
+				fprintf(stderr, "Buffer Size %d "
+					      	"is greater than %d. "
+				      		"Please increase MAX_STACK_SIZE in xclipd.h\n",
+				  		buffer_size, MAX_STACK_SIZE);
+				buffer_size = MAX_STACK_SIZE;
+			}		
 			break;
 		case 's':
 			sock_path = optarg;
