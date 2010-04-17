@@ -36,15 +36,11 @@ static int push(const char *s, unsigned long l) {
 		return 1;
 	else 
 		bzero(next, sizeof(struct clip_entry));
-	if(s[l-1] != '\n') 
-		newline = 1;
 	next->len = l+1+newline;
 	if ((next->entry = (char *) malloc((next->len)*sizeof(char))) == NULL)
 		      return 1;
 	else {
 		strncpy(next->entry, s,next->len);
-		if(newline > 0)
-			next->entry[next->len-2] = '\n';
 		next->entry[next->len-1]='\0';
 	}
 	/* If the same string is selected twice
@@ -130,7 +126,7 @@ static void ulisten(void) {
 						if (clip_stack->size > 0){
 							c = clip_stack->top;
 							for(;;){
-								u_write(cfd, c->entry);
+								netprintf(cfd, c->entry);
 								if(c->next == NULL){
 									break;
 								}
@@ -155,9 +151,9 @@ static void ulisten(void) {
 									c = c->next;
 								}
 							}
-							u_write(cfd, c->entry);
+							netprintf(cfd, c->entry);
 						} else{
-							u_write(cfd, "Out of range clip\n");
+							netprintf(cfd, "Out of range clip\n");
 						}
 					}
 
@@ -170,10 +166,10 @@ static void ulisten(void) {
 					stack_add(clip_buff);
 					break;
 				case ACTION_SIZE:
-					u_write(cfd,"%d",clip_stack->size);
+					netprintf(cfd,"%d",clip_stack->size);
 					break;
 				default:
-					u_write(cfd,"Protocol error\n");
+					netprintf(cfd,"Protocol error\n");
 			}
 			close(cfd);
 
@@ -182,22 +178,65 @@ static void ulisten(void) {
 }
 
 /* Write to socket */
-static int u_write(int socket,const char* format, ...) {
-	va_list ap;
-	char *p;
-	// resolv format
-	if ((p = malloc(MAX_CLIP_SIZE * sizeof (char) )) == NULL)
-		return 1;
-	va_start(ap, format);
-	(void) vsnprintf(p, MAX_CLIP_SIZE, format, ap);
-	va_end(ap);
-
-	if(write(socket, p, strlen(p))) {
-		return 0;
-	} else{
+static int netprintf(int socket, const char* format, ...){
+        va_list ap;
+        char *resolved, *netstring, *number;
+        size_t len, nlen;
+	/* resolv the format */
+        va_start(ap, format);
+	if((resolved=(char *) malloc(sizeof(char))) == NULL){
+		perror("malloc");
 		return 1;
 	}
+        len=vsnprintf(resolved,1,format, ap);
+	if(len >=1){
+		if((resolved=(char *) realloc(resolved,sizeof(char)*len)) == NULL){
+			perror("realloc");
+			return 1;
+		}
+        	(void) vsnprintf(resolved,len,format, ap);
+	}
+        va_end(ap);
+	/* compose the netstring */
+	if((number=(char *) malloc(sizeof(char))) == NULL){
+		perror("malloc");
+		return 1;
+	}
+	len=snprintf(number,1,"%d",strlen(resolved));
+	printf("%d:%s\n", len, number);
+	if(len >=1){
+		len++;
+		if((number=(char *) realloc(number,sizeof(char)*len)) == NULL){
+			perror("realloc");
+			return 1;
+		}
+		(void) snprintf(number,len,"%d",strlen(resolved));
+		printf("%d:%s:%d\n", len, number, strlen(resolved));
+	}
+	len += sizeof(char) * strlen(resolved);
+	len += sizeof(char) * 2; // ':' + '\0'
+	if((netstring=(char *) malloc(len)) == NULL){
+		perror("malloc");
+		return 1;
+	}
+
+        len=snprintf(netstring,len,"%s:%s", number, resolved);
+	free(resolved);
+	/* change \0 to , */
+        netstring[len]=',';
+
+	/* Write to socket */
+        if(write(socket, netstring, len+1)) {
+		/* free need a limit */
+		netstring[len]='\0';
+		free(netstring);
+                return 0;
+        } else{
+		free(netstring);
+                return 1;
+        }
 }
+
 
 /* Add clip to stack */
 static int stack_add(const char * to_add) {
@@ -251,7 +290,7 @@ static void get_selection(void) {
 
 	if(sel_len) {
 		if(push(sel_buf, sel_len) > 0)
-			fprintf(stderr, "push problem\n");
+			(void) fprintf(stderr, "push problem\n");
 		if (sseln == XA_STRING)
 			XFree(sel_buf);
 		else
@@ -264,17 +303,17 @@ static int xlaunch(void) {
 	XEvent	event;
 	XFixesSelectionNotifyEvent *sevent;
 	if ((display = XOpenDisplay(NULL)) == NULL) {
-		fprintf(stderr, "Can't open Display\n");
+		(void) fprintf(stderr, "Can't open Display\n");
 		return 1;
 	}
 	root = DefaultRootWindow(display);
 	if( !XFixesQueryExtension(display, &event_base, &dummy )){
-		fprintf(stderr, "Cannot load XFixes extension\n");
+		(void) fprintf(stderr, "Cannot load XFixes extension\n");
 		XCloseDisplay(display);
 		return 1;
 	}
 	if (!XFixesQueryVersion(display, &ver_major, &ver_minor)) {
-		fprintf(stderr, "XFixes version not queriable.\n");
+		(void) fprintf(stderr, "XFixes version not queriable.\n");
 		XCloseDisplay(display);
 		return 1;
 	}
@@ -308,7 +347,7 @@ void clean_exit(int signum) {
 
 
 void usage(void) {
-	fprintf(stderr, "Usage:\n"
+	(void) fprintf(stderr, "Usage:\n"
 			"xclipd -n number of entries -s " 
 			"/path/to/socket.sock [-d run has a daemon]\n"
 	       );

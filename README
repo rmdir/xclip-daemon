@@ -16,23 +16,38 @@ the selections and the del command to clear
 the selection stack.
 
 $ echo "get"|nc -U /path/to/socket.sock
-toto
-titi
-tata
-toutou
+11:xclip-daemo,
 
 $ echo "del"|nc -U /home/joris/clip.sock
 
 LICENCE
 This software is under beerware licence.
 The files xcdef.h xclib.c xclib.h and xcprint.h
-are under GPL
+are under GPL please look at
+http://www.gnu.org/licenses/gpl.html 
 
 CREDITS :
 Many files cames from xclip http://xclip.sourceforge.net
 
 Have a look at this blog for XFixes usage
 http://wahjava.wordpress.com/2006/08/
+
+Have a look at polymorf site 
+http://www.polymorf.fr/
+
+PROTOCOL :
+daemon retruns netstrings (ex 11:xclip-daemo,) 
+see http://en.wikipedia.org/wiki/Netstrings
+
+Actuals commands are
+
+get [n] -> get the item number n (all if n is not specified)
+del -> clears the buffer
+siz -> returns the number of stored items
+set item -> add item to current stack
+
+
+ 
 
 
 

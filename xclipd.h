@@ -63,4 +63,5 @@ static void ulisten(void);
 static int push(const char *s, unsigned long l); 
 static int stack_init(void); 
 static int u_write(int socket,const char* format, ...);
+static int netprintf(int socket,const char* format, ...);
 
