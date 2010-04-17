@@ -78,7 +78,7 @@ static int push(const char *s, unsigned long l) {
 static void ulisten(void) {
 	size_t len, clen;  
 	socklen_t fd, cfd;
-	char *buffer, *clip_buff, *cmd, *args;
+	char *buffer, *clip_buff, *cmd, *args = NULL;
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
 
@@ -116,12 +116,14 @@ static void ulisten(void) {
 			cmd=strncpy(cmd, buffer, (size_t) 3);
 			cmd[3]='\0';
 			if(strlen(buffer) > 3){
-				if((args = (char *) malloc(sizeof(char) * (strlen(buffer) -3))) == NULL){
+				/* 4 cmd + ' ' */
+				if((args = (char *) malloc(sizeof(char) * (strlen(buffer) -4))) == NULL){
 					perror("malloc");
 					continue;
 				}
-				args = strndup(buffer + 3, strlen(buffer) -3);
+				args = strndup(buffer + 4, strlen(buffer) -4);
 			}
+			free(buffer);
 			if( strcmp("get", cmd ) == 0 ) {
 				action = ACTION_GET;
 			} else if( strcmp("set",cmd) == 0 ) {
@@ -134,6 +136,7 @@ static void ulisten(void) {
 			} else if( trcmp("twt", cmd) == 0 ) {
 				action = ACTION_TWIT
 #endif /* WITH_TWITTER */
+			free(cmd);
 			}
 			switch(action) {
 				case ACTION_GET:
@@ -144,7 +147,7 @@ static void ulisten(void) {
 							for(;;){
 								netprintf(cfd, c->entry);
 								if(c->next == NULL){
-									continue;
+									break;
 								}
 								else 
 									c = c->next;
@@ -165,7 +168,7 @@ static void ulisten(void) {
 							int i=0;
 							for(i=0; i < clip_nb; i++ ) {
 								if(c->next == NULL) {
-									continue;
+									break;
 								}else{
 									c = c->next;
 								}
@@ -192,11 +195,8 @@ static void ulisten(void) {
 				default:
 					netprintf(cfd,"Protocol error\n");
 			}
-			free(args);
-			free(cmd);
-			free(buffer);
 			close(cfd);
-
+			if(args != NULL) free(args);
 		}
 	}
 }
@@ -229,7 +229,7 @@ static char *netread(int socket){
 			fprintf(stderr, "Not a netstring\n");
 			return NULL;
 		}
-		buffer[len +1] = '\0';
+		buffer[len] = '\0';
 		return buffer;
 	}
 	fprintf(stderr, "Not a netstring\n");
@@ -255,6 +255,7 @@ static int netprintf(int socket, const char* format, ...){
 	}
         len=vsnprintf(resolved,1,format, ap);
 	if(len >=1){
+		len++;
 		if((resolved=(char *) realloc(resolved,sizeof(char)*len)) == NULL){
 			perror("realloc");
 			return 1;
@@ -268,7 +269,6 @@ static int netprintf(int socket, const char* format, ...){
 		return 1;
 	}
 	len=snprintf(number,1,"%d",strlen(resolved));
-	printf("%d:%s\n", len, number);
 	if(len >=1){
 		len++;
 		if((number=(char *) realloc(number,sizeof(char)*len)) == NULL){
@@ -276,7 +276,6 @@ static int netprintf(int socket, const char* format, ...){
 			return 1;
 		}
 		(void) snprintf(number,len,"%d",strlen(resolved));
-		printf("%d:%s:%d\n", len, number, strlen(resolved));
 	}
 	len += sizeof(char) * strlen(resolved);
 	len += sizeof(char) * 2; // ':' + '\0'
@@ -297,6 +296,7 @@ static int netprintf(int socket, const char* format, ...){
 		free(netstring);
                 return 0;
         } else{
+		netstring[len]='\0';
 		free(netstring);
                 return 1;
         }

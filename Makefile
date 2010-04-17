@@ -8,7 +8,7 @@ install :
 	install -svbm 755 xclipd /usr/local/bin/ 
 
 debug : 
-	cc -g -Wall -O2 xclipd.c xclib.c -o xclipd -lX11 -lXfixes -lXmu -lpthread
+	cc -g -Wall xclipd.c xclib.c -o xclipd -lX11 -lXfixes -lXmu -lpthread
 
 help :
 	@echo "one of all clean install debug"
