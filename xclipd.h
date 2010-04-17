@@ -45,6 +45,7 @@
 #define ACTION_SIZE 4
 #ifdef WITH_TWITTER
 #define ACTION_TWIT 5
+#define TWIT_URL "http://twitter.com/statuses/update.xml"
 #endif /* WITH_TWITTER */
 
 #define MAX_STACK_SIZE 1024

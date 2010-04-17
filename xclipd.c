@@ -20,6 +20,10 @@ volatile struct stack *clip_stack;
 
 char * sock_path;
 
+#ifdef WITH_TWITTER
+char *user, *pass;
+#endif /* WITH_TWITTER */
+
 static int stack_init() {
 	if((clip_stack = (struct stack *) malloc(sizeof (struct stack))) == NULL)
 	       return 1;
@@ -81,6 +85,12 @@ static void ulisten(void) {
 	char *buffer, *clip_buff, *cmd, *args = NULL;
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
+#ifdef WITH_TWITTER
+	CURL *curl;
+	CURLcode res;
+	char *login, *message;
+#endif /* WITH_TWITTER */
+
 
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
 		perror("socket");
@@ -133,11 +143,11 @@ static void ulisten(void) {
 			} else if( strcmp("siz",cmd) == 0 ) {
 				action = ACTION_SIZE;
 #ifdef WITH_TWITTER
-			} else if( trcmp("twt", cmd) == 0 ) {
-				action = ACTION_TWIT
+			} else if(strcmp("twt", cmd) == 0 ) {
+				action = ACTION_TWIT;
 #endif /* WITH_TWITTER */
-			free(cmd);
 			}
+			free(cmd);
 			switch(action) {
 				case ACTION_GET:
 					// Client want all off the list
@@ -190,6 +200,48 @@ static void ulisten(void) {
 					break;
 #ifdef WITH_TWITTER
 				case ACTION_TWIT:
+					curl = curl_easy_init();
+					if((login = (char *) malloc(sizeof(char) *(strlen(user) + strlen(pass) + 1))) == NULL){
+						perror("malloc");
+						break;
+					}
+					curl_easy_setopt(curl, CURLOPT_URL, TWIT_URL);
+					curl_easy_setopt(curl, CURLOPT_USERPWD, login);
+                 			curl_easy_setopt(curl, CURLOPT_POST, 1);
+					int i;
+					for(i = 0; i < strlen(args); i++){
+						if(!isdigit(args[i])){
+							netprintf(cfd,"Protocol error\n");
+						}
+					}
+					int clip_nb = atoi(args);
+					if(clip_stack->size > clip_nb) {
+						c = clip_stack->top;
+						int i=0;
+						for(i=0; i < clip_nb; i++ ) {
+							if(c->next == NULL) {
+								break;
+							}else{
+								c = c->next;
+							}
+						}
+						if((message = (char *) malloc(sizeof(char) * (10 + strlen(c->entry)))) == NULL){
+							perror("malloc");
+							break;
+						}
+						sprintf(message, "status=\"%s\"", c->entry);
+						curl_easy_setopt(curl, CURLOPT_POSTFIELDS, message);
+						res = curl_easy_perform(curl);
+                 				curl_easy_cleanup(curl);
+						if(res == 0) 
+							netprintf(cfd, "entry : \"%s\" was posted", c->entry);
+						else 
+							netprintf(cfd, "error(%d) while popsting \"%s\"", res, c->entry);
+						
+					} else{
+						netprintf(cfd, "Out of range clip\n");
+					}
+						
 					break;
 #endif
 				default:
@@ -431,8 +483,11 @@ int main(int argc, char **argv) {
 	signal(SIGHUP, stack_clear_sig);
 
 
-
+#ifndef WITH_TWITTER
 	while ((c = getopt (argc, argv, "ds:n:")) != -1){
+#else
+	while ((c = getopt (argc, argv, "ds:n:u:p:")) != -1){
+#endif /* WITH_TWITTER */
 		switch (c) {
 		case 'd':
 			dflag = 1;
@@ -450,6 +505,14 @@ int main(int argc, char **argv) {
 		case 's':
 			sock_path = optarg;
 			break;
+#ifdef WITH_TWITTER
+		case 'u':
+                	user = optarg;
+                        break;
+                case 'p':
+                        pass = optarg;
+                        break;
+#endif /* WITH_TWITTER */
 		default :
 			usage();
 		}

@@ -10,5 +10,8 @@ install :
 debug : 
 	cc -g -Wall xclipd.c xclib.c -o xclipd -lX11 -lXfixes -lXmu -lpthread
 
+twitter : 
+	cc -O2 xclipd.c xclib.c -o xclipd -DWITH_TWITTER -lcurl -lX11 -lXfixes -lXmu -lpthread
+
 help :
 	@echo "one of all clean install debug"
