@@ -22,7 +22,7 @@ $ echo "3:del,"|nc -U /home/joris/clip.sock
 you can use the client
 
 $ echo "get 1"| clipme -s /home/joris/clip.sock
-11:xclip-daemo,
+xclip-daemo
 
 $ echo "del"| clipme -s /home/joris/clip.sock
 
