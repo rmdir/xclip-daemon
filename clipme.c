@@ -101,9 +101,6 @@ struct clip_entry *get_one(int n) {
 	pthread_mutex_unlock(&mutex);
 	return c;
 }
-	
-
-
 
 void ulisten(void) {
 	size_t len, clen;  
@@ -221,8 +218,6 @@ void ulisten(void) {
 						break;
 					}
 					(void) sprintf(login,"%s:%s", user,pass);
-					printf("%s:%s -> ",user,pass);
-					printf("%s\n",login);
 					curl_easy_setopt(curl, CURLOPT_URL, TWIT_URL);
 					curl_easy_setopt(curl, CURLOPT_USERPWD, login);
                  			curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -258,110 +253,6 @@ void ulisten(void) {
 		}
 	}
 }
-
-static char *netread(int socket){
-	char *buffer, c[2];
-	size_t len=0;
-	if((buffer = (char *) malloc(sizeof(char))) == NULL){
-		perror("malloc");
-		return NULL;
-	}
-	for(;;){
-		read(socket,&c, 1);
-		c[1]='\0';
-		if(c[0] == ':')
-		       break;
-		if(isdigit(c[0])){
-			len = 10 * len + atoi(c);	
-		}
-		else {
-			fprintf(stderr, "Not a netstring\n");
-			return NULL;
-		}
-	}
-	if(len > 0){
-		if((buffer = (char *) malloc(sizeof(char) * (len +1))) == NULL){
-			perror("malloc");
-			return NULL;
-		}
-		read(socket, buffer, len + 1);
-		if(buffer[len] != ','){
-			fprintf(stderr, "Not a netstring\n");
-			return NULL;
-		}
-		buffer[len] = '\0';
-		return buffer;
-	}
-	fprintf(stderr, "Not a netstring\n");
-	return NULL;
-}
-
-
-
-
-	       		
-	
-
-/* Write to socket */
-static int netprintf(int socket, const char* format, ...){
-        va_list ap;
-        char *resolved, *netstring, *number;
-        size_t len;
-	/* resolv the format */
-        va_start(ap, format);
-	if((resolved=(char *) malloc(sizeof(char))) == NULL){
-		perror("malloc");
-		return EXIT_FAILURE;
-	}
-        len=vsnprintf(resolved,1,format, ap);
-	if(len >=1){
-		len++;
-		if((resolved=(char *) realloc(resolved,sizeof(char)*len)) == NULL){
-			perror("realloc");
-			return EXIT_FAILURE;
-		}
-        	(void) vsnprintf(resolved,len,format, ap);
-	}
-        va_end(ap);
-	/* compose the netstring */
-	if((number=(char *) malloc(sizeof(char))) == NULL){
-		perror("malloc");
-		return EXIT_FAILURE;
-	}
-	len=snprintf(number,1,"%d",strlen(resolved));
-	if(len >=1){
-		len++;
-		if((number=(char *) realloc(number,sizeof(char)*len)) == NULL){
-			perror("realloc");
-			return EXIT_FAILURE;
-		}
-		(void) snprintf(number,len,"%d",strlen(resolved));
-	}
-	len += sizeof(char) * strlen(resolved);
-	len += sizeof(char) * 2; // ':' + '\0'
-	if((netstring=(char *) malloc(len)) == NULL){
-		perror("malloc");
-		return EXIT_FAILURE;
-	}
-
-        len=snprintf(netstring,len,"%s:%s", number, resolved);
-	if(resolved) free(resolved);
-	/* change \0 to , */
-        netstring[len]=',';
-
-	/* Write to socket */
-        if(write(socket, netstring, len+1)) {
-		/* free need a limit */
-		netstring[len]='\0';
-		if(netstring) free(netstring);
-                return EXIT_SUCCESS;
-        } else{
-		netstring[len]='\0';
-		if(netstring) free(netstring);
-                return EXIT_FAILURE;
-        }
-}
-
 
 /* Add clip to stack */
 int stack_add(const char * to_add) {
@@ -590,7 +481,7 @@ int main(int argc, char **argv) {
 		}
 		if (connect(fd, (struct sockaddr *) &con, sizeof(con)) == 0){
 			(void) netprintf(fd,command);
-			if((response = netread(fd)) != NULL) {
+			while((response = netread(fd)) != NULL) {
 				(void) printf("%s\n",response);
 			}
 			close(fd);

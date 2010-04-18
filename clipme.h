@@ -76,9 +76,9 @@ struct stack {
 
 
 
+extern int netprintf(int socket,const char* format, ...);
+extern char *netread(int socket);
 static int stack_init(void); 
-static int netprintf(int socket,const char* format, ...);
-static char *netread(int socket);
 static void usage(void);
 static void clean_exit(int signum);
 static void get_selection(void);
