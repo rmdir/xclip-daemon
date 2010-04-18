@@ -86,12 +86,32 @@ int push(const char *s, unsigned long l) {
 	return 0;
 }
 
+struct clip_entry *get_one(int n) {
+	struct clip_entry *c;
+	int i;
+	pthread_mutex_lock(&mutex);
+	c = clip_stack->top;
+	for(i=0; i < n; i++) {
+		if(c->next == NULL){
+			pthread_mutex_unlock(&mutex);
+			return NULL;
+		}	
+		c = c->next;
+	}
+	pthread_mutex_unlock(&mutex);
+	return c;
+}
+	
+
+
+
 void ulisten(void) {
 	size_t len, clen;  
 	socklen_t fd, cfd;
 	char *buffer, *cmd, *args = NULL;
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
+	int i,j;
 #ifdef WITH_TWITTER
 	CURL *curl;
 	CURLcode res;
@@ -157,56 +177,31 @@ void ulisten(void) {
 			free(cmd);
 			switch(action) {
 				case ACTION_GET:
-					// Client want all off the list
+					/* Client wants all off the list */
 					if(args == NULL) {
-						pthread_mutex_lock(&mutex);
-						if (clip_stack->size > 0){
-							c = clip_stack->top;
-							for(;;){
+						for(i=0; i < clip_stack->size; i++){
+							if((c=get_one(i)) != NULL)
 								netprintf(cfd, c->entry);
-								if(c->next == NULL){
-									pthread_mutex_unlock(&mutex);
-									break;
-								}
-								else 
-									c = c->next;
-							}
+							else
+								break;
 						}
 					}
-					// Client want a specific clip
+					/* Client want a specific clip */
 					else {
-						int i;
+						/* check if args is a number */
 						for(i = 0; i < strlen(args); i++){
 							if(!isdigit(args[i])){
 								netprintf(cfd,"Protocol error\n");
 							}
 						}
-						int clip_nb = atoi(args);
-						pthread_mutex_lock(&mutex);
-						if(clip_stack->size > clip_nb) {
-							c = clip_stack->top;
-							int j;
-							for(j=0; j < clip_nb; j++ ) {
-								if(c->next == NULL) {
-									pthread_mutex_unlock(&mutex);
-									break;
-								}else{
-									c = c->next;
-								}
-							}
-							netprintf(cfd, c->entry);
-						} else{
+						if((c=get_one(atoi(args))) != NULL)
+							netprintf(cfd,c->entry);
+						else
 							netprintf(cfd, "Out of range clip\n");
-						}
 					}
-					pthread_mutex_unlock(&mutex);
 					break;
 				case ACTION_DEL:
-					/* stack_clear is recursive 
-					 * and not safe */
-					pthread_mutex_lock(&mutex);
 					stack_clear();
-					pthread_mutex_unlock(&mutex);
 					break;
 				case ACTION_SET:
 					stack_add(args);
@@ -224,40 +219,28 @@ void ulisten(void) {
 					curl_easy_setopt(curl, CURLOPT_URL, TWIT_URL);
 					curl_easy_setopt(curl, CURLOPT_USERPWD, login);
                  			curl_easy_setopt(curl, CURLOPT_POST, 1);
-					int i;
 					for(i = 0; i < strlen(args); i++){
 						if(!isdigit(args[i])){
 							netprintf(cfd,"Protocol error\n");
 						}
 					}
-					int clip_nb = atoi(args);
-					if(clip_stack->size > clip_nb) {
-						c = clip_stack->top;
-						int i=0;
-						for(i=0; i < clip_nb; i++ ) {
-							if(c->next == NULL) {
-								break;
-							}else{
-								c = c->next;
-							}
-						}
+					if((c=get_one(atoi(args))) == NULL)
+							netprintf(cfd, "Out of range clip\n");
+					else {
 						if((message = (char *) malloc(sizeof(char) * (10 + strlen(c->entry)))) == NULL){
 							perror("malloc");
 							break;
 						}
-						sprintf(message, "status=\"%s\"", c->entry);
+						(void) sprintf(message, "status=\"%s\"", c->entry);
 						curl_easy_setopt(curl, CURLOPT_POSTFIELDS, message);
 						res = curl_easy_perform(curl);
                  				curl_easy_cleanup(curl);
 						if(res == 0) 
-							netprintf(cfd, "entry : \"%s\" was posted", c->entry);
+							netprintf(cfd, "Entry : \"%s\" was posted", c->entry);
 						else 
-							netprintf(cfd, "error(%d) while popsting \"%s\"", res, c->entry);
+							netprintf(cfd, "Error(%d) while posting \"%s\"", res, c->entry);
 						
-					} else{
-						netprintf(cfd, "Out of range clip\n");
 					}
-						
 					break;
 #endif
 				default:
@@ -353,7 +336,7 @@ static int netprintf(int socket, const char* format, ...){
 	}
 
         len=snprintf(netstring,len,"%s:%s", number, resolved);
-	free(resolved);
+	if(resolved) free(resolved);
 	/* change \0 to , */
         netstring[len]=',';
 
@@ -361,11 +344,11 @@ static int netprintf(int socket, const char* format, ...){
         if(write(socket, netstring, len+1)) {
 		/* free need a limit */
 		netstring[len]='\0';
-		free(netstring);
+		if(netstring) free(netstring);
                 return 0;
         } else{
 		netstring[len]='\0';
-		free(netstring);
+		if(netstring) free(netstring);
                 return 1;
         }
 }
@@ -395,9 +378,9 @@ int _stack_clear(void) {
 			supp = clip_stack->top;
 			clip_stack->top = supp->next;
 			clip_stack->size--;
-			free(supp->entry);
-			free(supp);
-			return stack_clear();
+			if(supp->entry) free(supp->entry);
+			if(supp) free(supp);
+			return _stack_clear();
 		}else{
 			return 0;
 		}
@@ -433,7 +416,7 @@ static void get_selection(void) {
 		if (sseln == XA_STRING)
 			XFree(sel_buf);
 		else
-			free(sel_buf);
+			if(sel_buf) free(sel_buf);
 	}
 }
 
@@ -474,7 +457,7 @@ static int xlaunch(void) {
 
 static void clean_exit(int signum) {
 	stack_clear();
-	free((void *)clip_stack);
+	if(clip_stack) free((void *)clip_stack);
 	if(sock_path != 0) {
 		unlink(sock_path);
 	}

@@ -89,4 +89,5 @@ void stack_clear_sig(int signum);
 int stack_add(const char * to_add);
 void ulisten(void);
 int push(const char *s, unsigned long l); 
+struct clip_entry *get_one(int n); 
 
