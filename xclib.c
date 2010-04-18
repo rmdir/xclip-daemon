@@ -24,9 +24,7 @@
 #include <string.h>
 #include <X11/Xlib.h>
 #include <X11/Xatom.h>
-#include "xcdef.h"
-#include "xcprint.h"
-#include "xclib.h"
+#include "xclip.h"
 
 /* check a pointer to allocater memory, print an error if it's null */
 void

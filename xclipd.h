@@ -37,7 +37,7 @@
 #include <curl/easy.h>
 #endif /* WITH_TWITTER */
 
-#include "xclib.h"
+#include "xclip.h"
 
 /* maybe an enum here ? */
 #define ACTION_GET 1

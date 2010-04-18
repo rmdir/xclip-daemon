@@ -469,24 +469,31 @@ static void clean_exit(int signum) {
 
 
 static void usage(void) {
-	(void) fprintf(stderr, "Usage:\n"
-			"xclipd -n number of entries -s " 
-			"/path/to/socket.sock [-d run has a daemon]\n"
+	(void) fprintf(stderr, 	"\nDaemon usage :\n"
+				"\tclipme -n number of entries -s " 
+				"/path/to/socket.sock -d\n"
+				"\tYou can add -b stay in background "
+				"and a -l /path/to/log.file to get stderr\n"
 	       );
+#ifdef WITH_TWITTER
+	(void) fprintf(stderr, 	"\tIf you want to use twitter feature add a "
+				"-u username and -p password\n"
+		      );
+#endif /* WITH_TWITTER */
+	(void) fprintf(stderr,	"Client usage :\n"
+				"\tclipme -s /path/to/socket.sock\n\n"
+		      );
 	exit(1);
 }
 
 
 int main(int argc, char **argv) {
-
-	
 	int c, dflag = 0;
 	pthread_t server;
 
 	signal(SIGINT, clean_exit);
 	signal(SIGTERM, clean_exit);
 	signal(SIGHUP, stack_clear_sig);
-
 
 #ifndef WITH_TWITTER
 	while ((c = getopt (argc, argv, "ds:n:")) != -1){
@@ -542,10 +549,5 @@ int main(int argc, char **argv) {
 		return 1;
 	
 	return 0;
-
-
-
-
-
 }
 
