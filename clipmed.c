@@ -370,43 +370,30 @@ static void clean_exit(int signum) {
 
 static void usage(void) {
 	(void) fprintf(stderr, 	"\nDaemon usage :\n"
-				"\tclipme -n number of entries -s " 
+				"\tclipmed -n number of entries -s " 
 				"/path/to/socket.sock -d\n"
-				"\tYou can add -b stay in background\n" 
 	       );
 #ifdef WITH_TWITTER
 	(void) fprintf(stderr, 	"\tIf you want to use twitter feature add a "
 				"-u username and -p password\n"
 		      );
 #endif /* WITH_TWITTER */
-	(void) fprintf(stderr,	"Client usage :\n"
-				"\tclipme -s /path/to/socket.sock\n\n"
-		      );
 	exit(EXIT_FAILURE);
 }
 
 
 int main(int argc, char **argv) {
-	int c, dflag = 0, bflag = 0;
+	int c, dflag = 0;
 	pthread_t server;
-	/* client */
-	char *command = NULL, *response = NULL;
-	struct sockaddr_un con;
-	int fd = 0;
-	size_t s;
-
 
 #ifndef WITH_TWITTER
-	while ((c = getopt (argc, argv, "bds:n:")) != -1){
+	while ((c = getopt (argc, argv, "ds:n:")) != -1){
 #else
-	while ((c = getopt (argc, argv, "bds:n:u:p:")) != -1){
+	while ((c = getopt (argc, argv, "ds:n:u:p:")) != -1){
 #endif /* WITH_TWITTER */
 		switch (c) {
 		case 'd':
 			dflag = 1;
-			break;
-		case 'b':
-			bflag = 1;
 			break;
 		case 'n':
 			buffer_size = atoi(optarg);
@@ -421,8 +408,6 @@ int main(int argc, char **argv) {
 		case 's':
 			sock_path = optarg;
 			break;
-		case 'c':
-			command = optarg;
 #ifdef WITH_TWITTER
 		case 'u':
                 	user = optarg;
@@ -435,62 +420,27 @@ int main(int argc, char **argv) {
 			usage();
 		}
 	}
-	if(sock_path == NULL)
+	if(sock_path == NULL || buffer_size <= 0)
 		usage();
 	/* daemon */
+	stack_init();
 	if(dflag > 0){
-		stack_init();
-		if(bflag < 1){ 
-			pid_t pid = fork();
-			if(pid > 0){
-				printf("%d\n", pid+1);
-				exit(0);
-			}
-			daemon(0,0); 
+		pid_t pid = fork();
+		if(pid > 0){
+			printf("%d\n", pid+1);
+			exit(0);
 		}
-
-		signal(SIGINT, clean_exit);
-		signal(SIGTERM, clean_exit);
-		signal(SIGHUP, stack_clear_sig);
-
-		pthread_mutex_init(&mutex, NULL);
-		pthread_create(&server, NULL, (void *)ulisten, NULL);
-		if(xlaunch() > 0)
-			return EXIT_FAILURE;
+		daemon(0,0); 
 	}
-	/* client */	
-	else {
-		if(command == NULL){
-			/* get\n\0 */
-			if((command = (char *) malloc(sizeof(char)*5)) == NULL){
-				perror("malloc");
-				return EXIT_FAILURE;
-			}
-			s = sizeof(command)+1;
-			if(getline(&command, &s, stdin) < 0){
-				perror("getline");
-				return EXIT_FAILURE;
-			}
-		}
-		bzero(&con,sizeof(con)); 
-		con.sun_family = AF_UNIX;
-		strcpy(con.sun_path, sock_path);
-		if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
-			perror("socket");
-			return EXIT_FAILURE;
-		}
-		if (connect(fd, (struct sockaddr *) &con, sizeof(con)) == 0){
-			(void) netprintf(fd,command);
-			while((response = netread(fd)) != NULL) {
-				(void) printf("%s\n",response);
-			}
-			close(fd);
-		}
-		else {
-			perror("connect");
-			return EXIT_FAILURE;
-		}	
-	}
+
+	signal(SIGINT, clean_exit);
+	signal(SIGTERM, clean_exit);
+	signal(SIGHUP, stack_clear_sig);
+
+	pthread_mutex_init(&mutex, NULL);
+	pthread_create(&server, NULL, (void *)ulisten, NULL);
+	if(xlaunch() > 0)
+		return EXIT_FAILURE;
 	return EXIT_SUCCESS;
 }
 
