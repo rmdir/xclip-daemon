@@ -4,21 +4,29 @@ You need xorg headers files
 Get the sources
 git clone git://github.com/rmdir/xclip-daemon.git
 cd xclip-daemon
-make and copy xcilpd file wherever you want 
-or make install
+make and copy clipme and clipmed file wherever you want 
 
 USAGE :
 
-xcilpd -s /home/joris/clip.sock -n 2000 -d
+clipmed -s /home/joris/clip.sock -n 2000 -d
 
 Then you can use the get command to get
 the selections and the del command to clear 
 the selection stack.
 
-$ echo "get"|nc -U /path/to/socket.sock
+$ echo "5:get 1,"|nc -U /path/to/socket.sock
 11:xclip-daemo,
 
-$ echo "del"|nc -U /home/joris/clip.sock
+$ echo "3:del,"|nc -U /home/joris/clip.sock
+
+you can use the client
+
+$ echo "get 1"| clipme -s /home/joris/clip.sock
+11:xclip-daemo,
+
+$ echo "del"| clipme -s /home/joris/clip.sock
+
+
 
 LICENCE
 This software is under beerware licence.
@@ -39,13 +47,13 @@ PROTOCOL :
 daemon retruns netstrings (ex 11:xclip-daemo,) 
 see http://en.wikipedia.org/wiki/Netstrings
 
-Actuals commands are
+Actuals commands are :
 
 get [n] -> get the item number n (all if n is not specified)
 del -> clears the buffer
 siz -> returns the number of stored items
 set item -> add item to current stack
-
+twt n -> post n item on twitter (must be compiled with -DWITH_TWITTER)
 
  
 
