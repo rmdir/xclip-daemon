@@ -11,6 +11,7 @@
  */
 
 //unix
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -53,7 +54,14 @@
 Display	*display;
 Window win, root;
 size_t buffer_size; 
-int running;
+volatile struct stack *clip_stack;
+static pthread_mutex_t mutex;
+
+char *sock_path;
+
+#ifdef WITH_TWITTER
+char *user, *pass;
+#endif /* WITH_TWITTER */
 
 struct clip_entry {
 	char *entry;
@@ -70,14 +78,15 @@ struct stack {
 
 static int stack_init(void); 
 static int netprintf(int socket,const char* format, ...);
-static char * netread(int socket);
+static char *netread(int socket);
 static void usage(void);
 static void clean_exit(int signum);
 static void get_selection(void);
-static void stack_clear_sig(int signum);
-static int stack_clear(void);
-int stack_add(const char * to_add);
-static void ulisten(void);
-static int push(const char *s, unsigned long l); 
 static int xlaunch(void);
+int stack_clear(void);
+int _stack_clear(void);
+void stack_clear_sig(int signum);
+int stack_add(const char * to_add);
+void ulisten(void);
+int push(const char *s, unsigned long l); 
 

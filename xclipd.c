@@ -17,8 +17,9 @@ Display	*display;
 Window win, root;
 size_t buffer_size; 
 volatile struct stack *clip_stack;
+static pthread_mutex_t mutex;
 
-char * sock_path;
+char *sock_path;
 
 #ifdef WITH_TWITTER
 char *user, *pass;
@@ -26,24 +27,28 @@ char *user, *pass;
 
 static int stack_init() {
 	if((clip_stack = (struct stack *) malloc(sizeof (struct stack))) == NULL)
-	       return 1;
+	       	return 1;
 	else {	
 		clip_stack->top = NULL;
 		clip_stack->size = 0;
 	}
+	return 0;
 }
 
-static int push(const char *s, unsigned long l) {
+int push(const char *s, unsigned long l) {
 	struct clip_entry *next;
 	int newline = 0;
-	if ((next = (struct clip_entry *) malloc(sizeof (struct clip_entry))) == NULL)
+	pthread_mutex_lock(&mutex);
+	if ((next = (struct clip_entry *) malloc(sizeof (struct clip_entry))) == NULL){
+		pthread_mutex_unlock(&mutex);
 		return 1;
-	else 
+	} else 
 		bzero(next, sizeof(struct clip_entry));
 	next->len = l+1+newline;
-	if ((next->entry = (char *) malloc((next->len)*sizeof(char))) == NULL)
-		      return 1;
-	else {
+	if ((next->entry = (char *) malloc((next->len)*sizeof(char))) == NULL){
+		pthread_mutex_unlock(&mutex);
+		return 1;
+	} else {
 		strncpy(next->entry, s,next->len);
 		next->entry[next->len-1]='\0';
 	}
@@ -56,6 +61,7 @@ static int push(const char *s, unsigned long l) {
 				/*Abort*/
 				free(next->entry);
 				free(next);
+				pthread_mutex_unlock(&mutex);
 				return -1;
 			}
 		}
@@ -76,13 +82,14 @@ static int push(const char *s, unsigned long l) {
 	next->next = clip_stack->top;
 	clip_stack->top = next;
 	clip_stack->size++;
+	pthread_mutex_unlock(&mutex);
 	return 0;
 }
 
-static void ulisten(void) {
+void ulisten(void) {
 	size_t len, clen;  
 	socklen_t fd, cfd;
-	char *buffer, *clip_buff, *cmd, *args = NULL;
+	char *buffer, *cmd, *args = NULL;
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
 #ifdef WITH_TWITTER
@@ -119,11 +126,11 @@ static void ulisten(void) {
 				close(cfd);
 				continue;
 			}
-			if((cmd = (char *) malloc(sizeof(char)*3)) == NULL){
+			if((cmd = (char *) malloc(sizeof(char)*4)) == NULL){
 				perror("malloc");
 				continue;
 			}
-			cmd=strncpy(cmd, buffer, (size_t) 3);
+			(void) strncpy(cmd, buffer, (size_t) 3);
 			cmd[3]='\0';
 			if(strlen(buffer) > 3){
 				/* 4 cmd + ' ' */
@@ -152,11 +159,13 @@ static void ulisten(void) {
 				case ACTION_GET:
 					// Client want all off the list
 					if(args == NULL) {
+						pthread_mutex_lock(&mutex);
 						if (clip_stack->size > 0){
 							c = clip_stack->top;
 							for(;;){
 								netprintf(cfd, c->entry);
 								if(c->next == NULL){
+									pthread_mutex_unlock(&mutex);
 									break;
 								}
 								else 
@@ -173,11 +182,13 @@ static void ulisten(void) {
 							}
 						}
 						int clip_nb = atoi(args);
+						pthread_mutex_lock(&mutex);
 						if(clip_stack->size > clip_nb) {
 							c = clip_stack->top;
-							int i=0;
-							for(i=0; i < clip_nb; i++ ) {
+							int j;
+							for(j=0; j < clip_nb; j++ ) {
 								if(c->next == NULL) {
+									pthread_mutex_unlock(&mutex);
 									break;
 								}else{
 									c = c->next;
@@ -188,9 +199,14 @@ static void ulisten(void) {
 							netprintf(cfd, "Out of range clip\n");
 						}
 					}
+					pthread_mutex_unlock(&mutex);
 					break;
 				case ACTION_DEL:
+					/* stack_clear is recursive 
+					 * and not safe */
+					pthread_mutex_lock(&mutex);
 					stack_clear();
+					pthread_mutex_unlock(&mutex);
 					break;
 				case ACTION_SET:
 					stack_add(args);
@@ -298,7 +314,7 @@ static char *netread(int socket){
 static int netprintf(int socket, const char* format, ...){
         va_list ap;
         char *resolved, *netstring, *number;
-        size_t len, nlen;
+        size_t len;
 	/* resolv the format */
         va_start(ap, format);
 	if((resolved=(char *) malloc(sizeof(char))) == NULL){
@@ -360,8 +376,14 @@ int stack_add(const char * to_add) {
 	push(to_add, strlen(to_add));
 }
 
-/* Needs something like a mutex */
-static int stack_clear(void) {
+int stack_clear(void) {
+	pthread_mutex_lock(&mutex);
+	int res = _stack_clear();
+	pthread_mutex_unlock(&mutex);
+	return res;
+}
+
+int _stack_clear(void) {
 	struct clip_entry *supp;
 	if(clip_stack == NULL ) {
 		return 0;
@@ -382,7 +404,7 @@ static int stack_clear(void) {
 	}
 }
 
-static void stack_clear_sig(int signum) {
+void stack_clear_sig(int signum) {
 	stack_clear();
 }
 
@@ -450,7 +472,7 @@ static int xlaunch(void) {
 	return 0;
 }
 
-void clean_exit(int signum) {
+static void clean_exit(int signum) {
 	stack_clear();
 	free((void *)clip_stack);
 	if(sock_path != 0) {
@@ -463,7 +485,7 @@ void clean_exit(int signum) {
 
 
 
-void usage(void) {
+static void usage(void) {
 	(void) fprintf(stderr, "Usage:\n"
 			"xclipd -n number of entries -s " 
 			"/path/to/socket.sock [-d run has a daemon]\n"
@@ -532,6 +554,7 @@ int main(int argc, char **argv) {
 		daemon(0,0);
 	}
 	pthread_create(&server, NULL, (void *)ulisten, NULL);
+	pthread_mutex_init(&mutex, NULL);
 	if(xlaunch() > 0)
 		return 1;
 	
