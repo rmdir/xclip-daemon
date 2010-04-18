@@ -11,7 +11,7 @@
  */
 
 
-#include "xclipd.h"
+#include "clipme.h"
 
 Display	*display;
 Window win, root;
