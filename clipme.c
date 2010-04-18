@@ -141,7 +141,7 @@ void ulisten(void) {
 		}
 		else {
 			int action=0;
-			// Get clip command 
+			/* get clip command */
 			if((buffer=netread(cfd)) == NULL){
 				close(cfd);
 				continue;
@@ -191,13 +191,13 @@ void ulisten(void) {
 						/* check if args is a number */
 						for(i = 0; i < strlen(args); i++){
 							if(!isdigit(args[i])){
-								netprintf(cfd,"Protocol error\n");
+								netprintf(cfd,"Protocol error");
 							}
 						}
 						if((c=get_one(atoi(args))) != NULL)
 							netprintf(cfd,c->entry);
 						else
-							netprintf(cfd, "Out of range clip\n");
+							netprintf(cfd, "Out of range clip");
 					}
 					break;
 				case ACTION_DEL:
@@ -221,11 +221,11 @@ void ulisten(void) {
                  			curl_easy_setopt(curl, CURLOPT_POST, 1);
 					for(i = 0; i < strlen(args); i++){
 						if(!isdigit(args[i])){
-							netprintf(cfd,"Protocol error\n");
+							netprintf(cfd,"Protocol error");
 						}
 					}
 					if((c=get_one(atoi(args))) == NULL)
-							netprintf(cfd, "Out of range clip\n");
+							netprintf(cfd, "Out of range clip");
 					else {
 						if((message = (char *) malloc(sizeof(char) * (10 + strlen(c->entry)))) == NULL){
 							perror("malloc");
@@ -244,7 +244,7 @@ void ulisten(void) {
 					break;
 #endif
 				default:
-					netprintf(cfd,"Protocol error\n");
+					netprintf(cfd,"Protocol error");
 			}
 			close(cfd);
 			if(args != NULL) free(args);
