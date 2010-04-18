@@ -211,11 +211,18 @@ void ulisten(void) {
 					break;
 #ifdef WITH_TWITTER
 				case ACTION_TWIT:
+					if(user == NULL || pass == NULL){
+						fprintf(stderr, "-u and -p options must be set for twitter use\n");
+						break;
+					}
 					curl = curl_easy_init();
-					if((login = (char *) malloc(sizeof(char) *(strlen(user) + strlen(pass) + 1))) == NULL){
+					if((login = (char *) malloc(sizeof(char) *(strlen(user) + strlen(pass) + 2))) == NULL){
 						perror("malloc");
 						break;
 					}
+					(void) sprintf(login,"%s:%s", user,pass);
+					printf("%s:%s -> ",user,pass);
+					printf("%s\n",login);
 					curl_easy_setopt(curl, CURLOPT_URL, TWIT_URL);
 					curl_easy_setopt(curl, CURLOPT_USERPWD, login);
                  			curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -586,6 +593,7 @@ int main(int argc, char **argv) {
 			if((response = netread(fd)) != NULL) {
 				(void) printf("%s\n",response);
 			}
+			close(fd);
 		}
 		else {
 			perror("connect");
