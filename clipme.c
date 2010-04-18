@@ -27,12 +27,12 @@ char *user, *pass;
 
 static int stack_init() {
 	if((clip_stack = (struct stack *) malloc(sizeof (struct stack))) == NULL)
-	       	return 1;
+	       	return EXIT_FAILURE;
 	else {	
 		clip_stack->top = NULL;
 		clip_stack->size = 0;
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 int push(const char *s, unsigned long l) {
@@ -41,13 +41,13 @@ int push(const char *s, unsigned long l) {
 	pthread_mutex_lock(&mutex);
 	if ((next = (struct clip_entry *) malloc(sizeof (struct clip_entry))) == NULL){
 		pthread_mutex_unlock(&mutex);
-		return 1;
+		return EXIT_FAILURE;
 	} else 
 		bzero(next, sizeof(struct clip_entry));
 	next->len = l+1+newline;
 	if ((next->entry = (char *) malloc((next->len)*sizeof(char))) == NULL){
 		pthread_mutex_unlock(&mutex);
-		return 1;
+		return EXIT_FAILURE;
 	} else {
 		strncpy(next->entry, s,next->len);
 		next->entry[next->len-1]='\0';
@@ -83,7 +83,7 @@ int push(const char *s, unsigned long l) {
 	clip_stack->top = next;
 	clip_stack->size++;
 	pthread_mutex_unlock(&mutex);
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 struct clip_entry *get_one(int n) {
@@ -121,7 +121,7 @@ void ulisten(void) {
 
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
 		perror("socket");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	bzero(&server, sizeof(struct sockaddr_un));
 	server.sun_family = AF_UNIX;
@@ -130,14 +130,14 @@ void ulisten(void) {
 	len = strlen(server.sun_path) + sizeof(server.sun_family);
 	if (bind(fd, (struct sockaddr *) &server, len) < 0) {
 		perror("bind");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	listen(fd, 5);
 	for(;;){
 		clen = sizeof(client);
 		if((cfd = accept(fd, (struct sockaddr *) &client, &clen)) < 0){
 			perror("accept");
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		else {
 			int action=0;
@@ -253,7 +253,7 @@ void ulisten(void) {
 }
 
 static char *netread(int socket){
-	char *buffer, c;
+	char *buffer, c[2];
 	size_t len=0;
 	if((buffer = (char *) malloc(sizeof(char))) == NULL){
 		perror("malloc");
@@ -261,10 +261,12 @@ static char *netread(int socket){
 	}
 	for(;;){
 		read(socket,&c, 1);
-		if(c == ':')
+		c[1]='\0';
+		if(c[0] == ':')
 		       break;
-		if(isdigit(c))
-			len = 10 * len + atoi(&c);	
+		if(isdigit(c[0])){
+			len = 10 * len + atoi(c);	
+		}
 		else {
 			fprintf(stderr, "Not a netstring\n");
 			return NULL;
@@ -302,14 +304,14 @@ static int netprintf(int socket, const char* format, ...){
         va_start(ap, format);
 	if((resolved=(char *) malloc(sizeof(char))) == NULL){
 		perror("malloc");
-		return 1;
+		return EXIT_FAILURE;
 	}
         len=vsnprintf(resolved,1,format, ap);
 	if(len >=1){
 		len++;
 		if((resolved=(char *) realloc(resolved,sizeof(char)*len)) == NULL){
 			perror("realloc");
-			return 1;
+			return EXIT_FAILURE;
 		}
         	(void) vsnprintf(resolved,len,format, ap);
 	}
@@ -317,14 +319,14 @@ static int netprintf(int socket, const char* format, ...){
 	/* compose the netstring */
 	if((number=(char *) malloc(sizeof(char))) == NULL){
 		perror("malloc");
-		return 1;
+		return EXIT_FAILURE;
 	}
 	len=snprintf(number,1,"%d",strlen(resolved));
 	if(len >=1){
 		len++;
 		if((number=(char *) realloc(number,sizeof(char)*len)) == NULL){
 			perror("realloc");
-			return 1;
+			return EXIT_FAILURE;
 		}
 		(void) snprintf(number,len,"%d",strlen(resolved));
 	}
@@ -332,7 +334,7 @@ static int netprintf(int socket, const char* format, ...){
 	len += sizeof(char) * 2; // ':' + '\0'
 	if((netstring=(char *) malloc(len)) == NULL){
 		perror("malloc");
-		return 1;
+		return EXIT_FAILURE;
 	}
 
         len=snprintf(netstring,len,"%s:%s", number, resolved);
@@ -345,11 +347,11 @@ static int netprintf(int socket, const char* format, ...){
 		/* free need a limit */
 		netstring[len]='\0';
 		if(netstring) free(netstring);
-                return 0;
+                return EXIT_SUCCESS;
         } else{
 		netstring[len]='\0';
 		if(netstring) free(netstring);
-                return 1;
+                return EXIT_FAILURE;
         }
 }
 
@@ -369,10 +371,10 @@ int stack_clear(void) {
 int _stack_clear(void) {
 	struct clip_entry *supp;
 	if(clip_stack == NULL ) {
-		return 0;
+		return EXIT_SUCCESS;
 	}
 	if(clip_stack->size == 0) {
-		return 0;
+		return EXIT_SUCCESS;
 	}else {
 		if( clip_stack->top != NULL ) {
 			supp = clip_stack->top;
@@ -382,7 +384,7 @@ int _stack_clear(void) {
 			if(supp) free(supp);
 			return _stack_clear();
 		}else{
-			return 0;
+			return EXIT_SUCCESS;
 		}
 	}
 }
@@ -426,18 +428,18 @@ static int xlaunch(void) {
 	XFixesSelectionNotifyEvent *sevent;
 	if ((display = XOpenDisplay(NULL)) == NULL) {
 		(void) fprintf(stderr, "Can't open Display\n");
-		return 1;
+		return EXIT_FAILURE;
 	}
 	root = DefaultRootWindow(display);
 	if( !XFixesQueryExtension(display, &event_base, &dummy )){
 		(void) fprintf(stderr, "Cannot load XFixes extension\n");
 		XCloseDisplay(display);
-		return 1;
+		return EXIT_FAILURE;
 	}
 	if (!XFixesQueryVersion(display, &ver_major, &ver_minor)) {
 		(void) fprintf(stderr, "XFixes version not queriable.\n");
 		XCloseDisplay(display);
-		return 1;
+		return EXIT_FAILURE;
 	}
 	win = XCreateSimpleWindow(display, root, 0, 0, 1, 1, 0, 0, 0);
 	XFixesSelectSelectionInput(display, win, XA_PRIMARY, XFixesSetSelectionOwnerNotifyMask);
@@ -452,7 +454,7 @@ static int xlaunch(void) {
 			}
 		}
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
 
 static void clean_exit(int signum) {
@@ -472,8 +474,7 @@ static void usage(void) {
 	(void) fprintf(stderr, 	"\nDaemon usage :\n"
 				"\tclipme -n number of entries -s " 
 				"/path/to/socket.sock -d\n"
-				"\tYou can add -b stay in background "
-				"and a -l /path/to/log.file to get stderr in a file\n"
+				"\tYou can add -b stay in background\n" 
 	       );
 #ifdef WITH_TWITTER
 	(void) fprintf(stderr, 	"\tIf you want to use twitter feature add a "
@@ -483,24 +484,24 @@ static void usage(void) {
 	(void) fprintf(stderr,	"Client usage :\n"
 				"\tclipme -s /path/to/socket.sock\n\n"
 		      );
-	exit(1);
+	exit(EXIT_FAILURE);
 }
 
 
 int main(int argc, char **argv) {
 	int c, dflag = 0, bflag = 0;
 	pthread_t server;
-	char *command = NULL;
 	/* client */
+	char *command = NULL, *response = NULL;
 	struct sockaddr_un con;
 	int fd = 0;
 	size_t s;
 
 
 #ifndef WITH_TWITTER
-	while ((c = getopt (argc, argv, "bds:n:c:")) != -1){
+	while ((c = getopt (argc, argv, "bds:n:")) != -1){
 #else
-	while ((c = getopt (argc, argv, "bds:n:u:p:c:")) != -1){
+	while ((c = getopt (argc, argv, "bds:n:u:p:")) != -1){
 #endif /* WITH_TWITTER */
 		switch (c) {
 		case 'd':
@@ -557,7 +558,7 @@ int main(int argc, char **argv) {
 		pthread_mutex_init(&mutex, NULL);
 		pthread_create(&server, NULL, (void *)ulisten, NULL);
 		if(xlaunch() > 0)
-			return 1;
+			return EXIT_FAILURE;
 	}
 	/* client */	
 	else {
@@ -565,26 +566,32 @@ int main(int argc, char **argv) {
 			/* get\n\0 */
 			if((command = (char *) malloc(sizeof(char)*5)) == NULL){
 				perror("malloc");
-				return 1;
+				return EXIT_FAILURE;
 			}
 			s = sizeof(command)+1;
 			if(getline(&command, &s, stdin) < 0){
 				perror("getline");
-				return 1;
+				return EXIT_FAILURE;
 			}
 		}
 		bzero(&con,sizeof(con)); 
 		con.sun_family = AF_UNIX;
 		strcpy(con.sun_path, sock_path);
-		if (connect(fd, (struct sockaddr *) &con, sizeof(con)) > 0){
+		if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
+			perror("socket");
+			return EXIT_FAILURE;
+		}
+		if (connect(fd, (struct sockaddr *) &con, sizeof(con)) == 0){
 			(void) netprintf(fd,command);
-			(void) printf("%s\n",netread(fd));
+			if((response = netread(fd)) != NULL) {
+				(void) printf("%s\n",response);
+			}
 		}
 		else {
 			perror("connect");
-			return 1;
+			return EXIT_FAILURE;
 		}	
 	}
-	return 0;
+	return EXIT_SUCCESS;
 }
 
