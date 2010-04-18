@@ -111,7 +111,7 @@ void ulisten(void) {
 	char *buffer, *cmd, *args = NULL;
 	struct sockaddr_un server, client;
 	struct clip_entry *c;
-	int i,j;
+	int i;
 #ifdef WITH_TWITTER
 	CURL *curl;
 	CURLcode res;
@@ -473,7 +473,7 @@ static void usage(void) {
 				"\tclipme -n number of entries -s " 
 				"/path/to/socket.sock -d\n"
 				"\tYou can add -b stay in background "
-				"and a -l /path/to/log.file to get stderr\n"
+				"and a -l /path/to/log.file to get stderr in a file\n"
 	       );
 #ifdef WITH_TWITTER
 	(void) fprintf(stderr, 	"\tIf you want to use twitter feature add a "
@@ -488,28 +488,33 @@ static void usage(void) {
 
 
 int main(int argc, char **argv) {
-	int c, dflag = 0;
+	int c, dflag = 0, bflag = 0;
 	pthread_t server;
+	char *command = NULL;
+	/* client */
+	struct sockaddr_un con;
+	int fd = 0;
+	size_t s;
 
-	signal(SIGINT, clean_exit);
-	signal(SIGTERM, clean_exit);
-	signal(SIGHUP, stack_clear_sig);
 
 #ifndef WITH_TWITTER
-	while ((c = getopt (argc, argv, "ds:n:")) != -1){
+	while ((c = getopt (argc, argv, "bds:n:c:")) != -1){
 #else
-	while ((c = getopt (argc, argv, "ds:n:u:p:")) != -1){
+	while ((c = getopt (argc, argv, "bds:n:u:p:c:")) != -1){
 #endif /* WITH_TWITTER */
 		switch (c) {
 		case 'd':
 			dflag = 1;
+			break;
+		case 'b':
+			bflag = 1;
 			break;
 		case 'n':
 			buffer_size = atoi(optarg);
 			if(buffer_size > MAX_STACK_SIZE){
 				fprintf(stderr, "Buffer Size %d "
 					      	"is greater than %d. "
-				      		"Please increase MAX_STACK_SIZE in xclipd.h\n",
+				      		"Please increase MAX_STACK_SIZE in clipme.h\n",
 				  		buffer_size, MAX_STACK_SIZE);
 				buffer_size = MAX_STACK_SIZE;
 			}		
@@ -517,6 +522,8 @@ int main(int argc, char **argv) {
 		case 's':
 			sock_path = optarg;
 			break;
+		case 'c':
+			command = optarg;
 #ifdef WITH_TWITTER
 		case 'u':
                 	user = optarg;
@@ -529,25 +536,55 @@ int main(int argc, char **argv) {
 			usage();
 		}
 	}
-	if(buffer_size == 0 ||
-			sock_path == NULL)
+	if(sock_path == NULL)
 		usage();
-
-
-	stack_init();
-	if(dflag > 0){ 
-		pid_t pid = fork();
-		if(pid > 0){
-			printf("%d\n", pid+1);
-			exit(0);
+	/* daemon */
+	if(dflag > 0){
+		stack_init();
+		if(bflag < 1){ 
+			pid_t pid = fork();
+			if(pid > 0){
+				printf("%d\n", pid+1);
+				exit(0);
+			}
+			daemon(0,0); 
 		}
-		daemon(0,0);
+
+		signal(SIGINT, clean_exit);
+		signal(SIGTERM, clean_exit);
+		signal(SIGHUP, stack_clear_sig);
+
+		pthread_mutex_init(&mutex, NULL);
+		pthread_create(&server, NULL, (void *)ulisten, NULL);
+		if(xlaunch() > 0)
+			return 1;
 	}
-	pthread_create(&server, NULL, (void *)ulisten, NULL);
-	pthread_mutex_init(&mutex, NULL);
-	if(xlaunch() > 0)
-		return 1;
-	
+	/* client */	
+	else {
+		if(command == NULL){
+			/* get\n\0 */
+			if((command = (char *) malloc(sizeof(char)*5)) == NULL){
+				perror("malloc");
+				return 1;
+			}
+			s = sizeof(command)+1;
+			if(getline(&command, &s, stdin) < 0){
+				perror("getline");
+				return 1;
+			}
+		}
+		bzero(&con,sizeof(con)); 
+		con.sun_family = AF_UNIX;
+		strcpy(con.sun_path, sock_path);
+		if (connect(fd, (struct sockaddr *) &con, sizeof(con)) > 0){
+			(void) netprintf(fd,command);
+			(void) printf("%s\n",netread(fd));
+		}
+		else {
+			perror("connect");
+			return 1;
+		}	
+	}
 	return 0;
 }
 
