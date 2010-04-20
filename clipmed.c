@@ -186,15 +186,21 @@ void ulisten(void) {
 					/* Client want a specific clip */
 					else {
 						/* check if args is a number */
+						short valid_arg = 1;
 						for(i = 0; i < strlen(args); i++){
-							if(!isdigit(args[i])){
+							if(!isdigit(args[i]) ){
 								netprintf(cfd,"Protocol error");
+								valid_arg = 0;
 							}
 						}
-						if((c=get_one(atoi(args))) != NULL)
+						if(!valid_arg)
+							break;
+						if( atoi(args) <= clip_stack->size && (c=get_one(atoi(args))) != NULL)
 							netprintf(cfd,c->entry);
-						else
+						else{
 							netprintf(cfd, "Out of range clip");
+							break;
+						}
 					}
 					break;
 				case ACTION_DEL:
@@ -255,7 +261,7 @@ void ulisten(void) {
 }
 
 /* Add clip to stack */
-int stack_add(const char * to_add) {
+void stack_add(const char * to_add) {
 	push(to_add, strlen(to_add));
 }
 
@@ -311,7 +317,7 @@ static void get_selection(void) {
 	}
 
 	if(sel_len) {
-		if(push(sel_buf, sel_len) > 0)
+		if(push((char *)sel_buf, sel_len) > 0)
 			(void) fprintf(stderr, "push problem\n");
 		if (sseln == XA_STRING)
 			XFree(sel_buf);

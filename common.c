@@ -37,7 +37,7 @@ struct config *parse_conf(char *path) {
 	struct stat *s;
 	struct config *conf;
 	FILE *f;
-	char *c, *p, *token, *value;
+	char *c, *token, *value;
 	int i,j;
 	/* default in ~/.config/clipmerc or ~/.clipmerc */
 	if(path == NULL){
@@ -72,12 +72,12 @@ struct config *parse_conf(char *path) {
 		}
 		token[i++]='\0';
 		/* eliminate many spaces or tabs */
-		for(i; i < strlen(c); i++){
+		for(; i < strlen(c); i++){
 			if(c[i] == ' ' || c[i] == '\t')
 				continue;
 			else break;
 		}
-		for(i,j=0; i < strlen(c); i++,j++){
+		for(j=0; i < strlen(c); i++,j++){
 			if(c[i] == '\n')
 				break;
 			value[j]=c[i];
