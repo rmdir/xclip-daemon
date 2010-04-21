@@ -37,14 +37,13 @@ static int stack_init() {
 
 int push(const char *s, unsigned long l) {
 	struct clip_entry *next;
-	int newline = 0;
 	pthread_mutex_lock(&mutex);
 	if ((next = (struct clip_entry *) malloc(sizeof (struct clip_entry))) == NULL){
 		pthread_mutex_unlock(&mutex);
 		return EXIT_FAILURE;
 	} else 
 		bzero(next, sizeof(struct clip_entry));
-	next->len = l+1+newline;
+	next->len = l+1;
 	if ((next->entry = (char *) malloc((next->len)*sizeof(char))) == NULL){
 		pthread_mutex_unlock(&mutex);
 		return EXIT_FAILURE;
@@ -70,10 +69,10 @@ int push(const char *s, unsigned long l) {
 	if(clip_stack->size == buffer_size) {
 		struct clip_entry *c = clip_stack->top;
 		struct clip_entry *prev;
-		while(c->next != NULL){
+		while(c->next != NULL) {
 			c = c->next;
 			prev = c;
-		}
+		} 
 		free(c->entry);
 		free(c);
 		prev->next = NULL;

@@ -214,6 +214,7 @@ char *netread(int socket){
 #ifdef DAEMON
 			fprintf(stderr, "Not a netstring\n");
 #endif /* DAEMON */
+			free(buffer);
 			return NULL;
 		}
 		buffer[len] = '\0';
