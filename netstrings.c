@@ -6,23 +6,9 @@
 #include <ctype.h>
 #include <sys/stat.h>
 
-
-struct config {
-	int number;
-	char *sock_path;
-#ifdef WITH_TWITTER
-	char *user;
-	char *pass;
-#endif /* WITH_TWITTER */
-};
-
 int netprintf(int socket, const char* format, ...);
 char *netread(int socket);
-struct config *parse_conf(char *path); 
 
-#define CONF1 "~/.config/clipmerc"
-#define CONF2 "~/.clipmerc"
-#define MAX_LINE_LENGHT 255
 
 inline void free_conf(struct config *conf) {
 	if(conf->sock_path != NULL) free(conf->sock_path);
@@ -31,95 +17,6 @@ inline void free_conf(struct config *conf) {
 	if(conf->pass !=NULL) free(conf->pass);
 #endif /* WITH_TWITTER */
 	free(conf);
-}
-
-struct config *parse_conf(char *path) {
-	struct stat *s;
-	struct config *conf;
-	FILE *f;
-	char *c, *token, *value;
-	int i,j;
-	/* default in ~/.config/clipmerc or ~/.clipmerc */
-	if(path == NULL){
-		if(lstat(CONF1,s) == 0)
-			strcpy(path,CONF1);
-		else if(lstat(CONF2,s) == 0)
-			strcpy(path,CONF2);
-		else return NULL;
-	}	
-	if((f = fopen(path, "r")) == NULL){
-		perror("fopen");
-		return NULL;
-	}
-	if((conf = (struct config *) malloc(sizeof(struct config))) == NULL){
-		perror("malloc");
-		return NULL;
-	}
-	bzero(conf, sizeof(struct config));
-	while(fgets(c, MAX_LINE_LENGHT, f) != NULL){
-		if(c[strlen(c) -1] != '\n'){
-			fprintf(stderr, "Line too long in %s\n", path);
-			fclose(f);
-			return NULL;
-		}
-		if(c[0] == '#' || c[0] == ' ' || c[0] == '\n'){
-			continue;
-		}
-		for(i=0; i < strlen(c); i++){ 
-			if(c[i] == ' '|| c[i] == '\t')
-				break;
-			token[i]=c[i];
-		}
-		token[i++]='\0';
-		/* eliminate many spaces or tabs */
-		for(; i < strlen(c); i++){
-			if(c[i] == ' ' || c[i] == '\t')
-				continue;
-			else break;
-		}
-		for(j=0; i < strlen(c); i++,j++){
-			if(c[i] == '\n')
-				break;
-			value[j]=c[i];
-		}
-		if(strcmp(token,"number") == 0){
-			conf->number=atoi(value);
-		} 
-		else if(strcmp(token,"sock_path") == 0){
-			if((conf->sock_path = (char *) malloc(sizeof(char)*(strlen(token)+1))) == NULL){
-				perror("malloc");
-				free_conf(conf);
-				fclose(f);
-				return NULL;
-			}
-			(void) strcpy(conf->sock_path,token);
-			conf->sock_path[strlen(token)] = '\0';
-		}
-#ifdef WITH_TWITTER
-		else if(strcmp(token,"user") == 0){
-			if((conf->user = (char *) malloc(sizeof(char)*(strlen(token)+1))) == NULL){
-				perror("malloc");
-				free_conf(conf);
-				fclose(f);
-				return NULL;
-			}
-			(void) strcpy(conf->user,token);
-			conf->user[strlen(token)] = '\0';
-		}
-		else if(strcmp(token,"sock_path") == 0){
-			if((conf->pass = (char *) malloc(sizeof(char)*(strlen(token)+1))) == NULL){
-				perror("malloc");
-				free_conf(conf);
-				fclose(f);
-				return NULL;
-			}
-			(void) strcpy(conf->sock_path,token);
-			conf->pass[strlen(token)] = '\0';
-		}
-#endif /* WITH_TWITTER */
-	} /* fgets */
-	fclose(f);
-	return conf;
 }
 
 /* Write to socket */

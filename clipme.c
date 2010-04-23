@@ -36,11 +36,11 @@ int main(int argc, char **argv) {
 			usage();
 		}
 	}
-	if(sock_path == NULL)
-		usage();
-	if(command == NULL){
+	/*if(sock_path == NULL)
+		usage();*/
+	//if(command == NULL){
 		/* get\n\0 */
-		if((command = (char *) malloc(sizeof(char)*5)) == NULL){
+/*		if((command = (char *) malloc(sizeof(char)*5)) == NULL){
 			perror("malloc");
 			return EXIT_FAILURE;
 		}
@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
 		perror("connect");
 		return EXIT_FAILURE;
 	}	
-	return EXIT_SUCCESS;
+	return EXIT_SUCCESS;*/
+	parse_conf();
 }
 
