@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "config.h"
 
 
@@ -78,7 +79,7 @@ void usage(void) {
 
 struct config *init_config(void){
 	struct config *conf;
-	char *user, *buf;
+	char *user; 
 	size_t l;
 	if((conf = (struct config *) malloc(sizeof(struct config))) == NULL) {
 		perror("malloc");
@@ -94,19 +95,17 @@ struct config *init_config(void){
 					+ 3);
 	if((conf->sockpath = (char *) malloc(l)) == NULL) {
 		perror("malloc");
-		free(conf);
 		return NULL;
 	}
 	(void) snprintf(conf->sockpath, l, "%s/%s.%s",  DEFAULT_SOCK_PATH,
 							user,
 							DEFAULT_SOCK_PREFIX
 			);
-	free(user);
 	return conf;
 }
 
 struct config *parse_args(int argc, char **argv) {
-	int c, i, n = 0, dflag = 0, bflag = 0;
+	int c, i, n = 0, dflag = 0;
 	char *sockpath = NULL , *confpath = NULL, *command, *buff;
 	size_t l;
 	struct config *conf;
@@ -159,8 +158,8 @@ struct config *parse_args(int argc, char **argv) {
 struct config *read_config(const char *path) {
 	char *home,*p; 
 	size_t l;
-	FILE *f;
 	struct config *conf = NULL;
+	struct stat s;
 
 	/* No config file provide */
 	if(path == NULL) {
@@ -174,8 +173,7 @@ struct config *read_config(const char *path) {
 			return NULL;
 		}
 		(void) snprintf(p, l, "%s/.config/clipmerc", home);
-		if((f=fopen(p, "rb")) != NULL) {
-			fclose(f);
+		if((lstat(p, &s)) == 0) {
 			conf = real_read_config(p);
 			free(p);
 			return conf;
@@ -188,14 +186,13 @@ struct config *read_config(const char *path) {
                         return NULL;
                 }
 		(void) snprintf(p, l, "%s/.clipmerc", home);
-		if((f=fopen(p, "rb")) != NULL) {
-			fclose(f);
+		if((lstat(p, &s)) == 0) {
                         conf = real_read_config(p);
                         free(p);
                         return conf;
 		}
-	}
-	return real_read_config(path);
+	} else  return real_read_config(path);
+	return init_config();
 }
 
 struct config *real_read_config(const char *path) {

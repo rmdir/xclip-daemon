@@ -21,7 +21,7 @@ static pthread_mutex_t mutex;
 
 struct config *config;
 
-static int stack_init() {
+int stack_init() {
 	if((clip_stack = (struct stack *) malloc(sizeof (struct stack))) == NULL)
 	       	return EXIT_FAILURE;
 	else {	
@@ -296,7 +296,7 @@ void stack_clear_sig(int signum) {
 /* Directly from xclip 
  * Clean up needed
  */
-static void get_selection(void) {
+void get_selection(void) {
 	unsigned char *sel_buf;	/* buffer for selection data */
 	unsigned long sel_len = 0;	/* length of sel_buf */
 	XEvent evt;			/* X Event Structures */
@@ -321,7 +321,7 @@ static void get_selection(void) {
 	}
 }
 
-static int xlaunch(void) {
+int xlaunch(void) {
 	int dummy, event_base, ver_major, ver_minor;
 	XEvent	event;
 	XFixesSelectionNotifyEvent *sevent;
@@ -356,7 +356,7 @@ static int xlaunch(void) {
 	return EXIT_SUCCESS;
 }
 
-static void clean_exit(int signum) {
+void clean_exit(int signum) {
 	stack_clear();
 	if(clip_stack) free((void *)clip_stack);
 	if(config->sockpath != 0) {

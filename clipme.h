@@ -54,13 +54,13 @@
 
 #define MAX_STACK_SIZE 1024
 
-Display	*display;
+/*Display	*display;
 Window win, root;
 size_t buffer_size; 
 volatile struct stack *clip_stack;
 static pthread_mutex_t mutex;
-
-char *sock_path;
+*/
+char *sock_path; 
 
 #ifdef WITH_TWITTER
 char *user, *pass;
@@ -81,10 +81,12 @@ struct stack {
 
 extern int netprintf(int socket,const char* format, ...);
 extern char *netread(int socket);
-static int stack_init(void); 
-static void clean_exit(int signum);
-static void get_selection(void);
-static int xlaunch(void);
+extern void usage(void);
+extern struct config *parse_args(int argc, char **argv);
+int stack_init(void); 
+void clean_exit(int signum);
+void get_selection(void);
+int xlaunch(void);
 int stack_clear(void);
 int _stack_clear(void);
 void stack_clear_sig(int signum);

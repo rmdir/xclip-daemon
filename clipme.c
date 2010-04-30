@@ -13,25 +13,16 @@
 #include "config.h"
 
 int main(int argc, char **argv) {
-	int c, dflag = 0, bflag = 0;
-	pthread_t server;
 	/* client */
-	char *command = NULL, *response = NULL;
-	char *home = NULL, *conf = NULL;
 	struct sockaddr_un con;
+	struct config *conf;
+	char *command;
+	char *response = NULL;
 	int fd = 0;
 	size_t s;
+	conf = parse_args(argc, argv);
+	command = conf->command; 
 
-
-	while ((c = getopt (argc, argv, "s:c:")) != -1){
-		switch (c) {
-		case 's':
-			sock_path = optarg;
-			break;
-		default :
-			usage();
-		}
-	}
 	if(command == NULL){
 		/* get\n\0 */
 		if((command = (char *) malloc(sizeof(char)*5)) == NULL){
@@ -52,7 +43,7 @@ int main(int argc, char **argv) {
 		return EXIT_FAILURE;
 	}
 	if (connect(fd, (struct sockaddr *) &con, sizeof(con)) == 0){
-		(void) netprintf(fd,command);
+		(void) netprintf(fd,&command);
 		while((response = netread(fd)) != NULL) {
 			(void) printf("%s\n",response);
 		}

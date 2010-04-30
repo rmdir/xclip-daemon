@@ -1,7 +1,7 @@
 CC=cc
 LEX=flex
 YACC=bison -y -d
-CFLAGS=-g -DWITH_TWITTER
+CFLAGS=-g -Wall -DWITH_TWITTER
 LDFLAGS=-lX11 -lXfixes -lXmu -lpthread -lcurl -lfl
 RM=rm -vf
 INSTALL=install
