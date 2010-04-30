@@ -12,18 +12,14 @@
 
 
 #include "clipme.h"
+#include "config.h"
 
 Display	*display;
 Window win, root;
-size_t buffer_size; 
 volatile struct stack *clip_stack;
 static pthread_mutex_t mutex;
 
-char *sock_path;
-
-#ifdef WITH_TWITTER
-char *user, *pass;
-#endif /* WITH_TWITTER */
+struct config *config;
 
 static int stack_init() {
 	if((clip_stack = (struct stack *) malloc(sizeof (struct stack))) == NULL)
@@ -66,7 +62,7 @@ int push(const char *s, unsigned long l) {
 		}
 	}
 	/* Suppress the lastone if needed */
-	if(clip_stack->size == buffer_size) {
+	if(clip_stack->size == config->number) {
 		struct clip_entry *c = clip_stack->top;
 		struct clip_entry *prev;
 		while(c->next != NULL) {
@@ -121,7 +117,7 @@ void ulisten(void) {
 	}
 	bzero(&server, sizeof(struct sockaddr_un));
 	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, sock_path);
+	strcpy(server.sun_path, config->sockpath);
 
 	len = strlen(server.sun_path) + sizeof(server.sun_family);
 	if (bind(fd, (struct sockaddr *) &server, len) < 0) {
@@ -213,16 +209,16 @@ void ulisten(void) {
 					break;
 #ifdef WITH_TWITTER
 				case ACTION_TWIT:
-					if(user == NULL || pass == NULL){
+					if(config->user == NULL || config->pass == NULL){
 						fprintf(stderr, "-u and -p options must be set for twitter use\n");
 						break;
 					}
 					curl = curl_easy_init();
-					if((login = (char *) malloc(sizeof(char) *(strlen(user) + strlen(pass) + 2))) == NULL){
+					if((login = (char *) malloc(sizeof(char) *(strlen(config->user) + strlen(config->pass) + 2))) == NULL){
 						perror("malloc");
 						break;
 					}
-					(void) sprintf(login,"%s:%s", user,pass);
+					(void) sprintf(login,"%s:%s", config->user,config->pass);
 					curl_easy_setopt(curl, CURLOPT_URL, TWIT_URL);
 					curl_easy_setopt(curl, CURLOPT_USERPWD, login);
                  			curl_easy_setopt(curl, CURLOPT_POST, 1);
@@ -363,8 +359,8 @@ static int xlaunch(void) {
 static void clean_exit(int signum) {
 	stack_clear();
 	if(clip_stack) free((void *)clip_stack);
-	if(sock_path != 0) {
-		unlink(sock_path);
+	if(config->sockpath != 0) {
+		unlink(config->sockpath);
 	}
 	XDestroyWindow(display, win);
 	if(display) XCloseDisplay(display);
@@ -373,63 +369,13 @@ static void clean_exit(int signum) {
 
 
 
-static void usage(void) {
-	(void) fprintf(stderr, 	"\nDaemon usage :\n"
-				"\tclipmed -n number of entries -s " 
-				"/path/to/socket.sock -d\n"
-	       );
-#ifdef WITH_TWITTER
-	(void) fprintf(stderr, 	"\tIf you want to use twitter feature add a "
-				"-u username and -p password\n"
-		      );
-#endif /* WITH_TWITTER */
-	exit(EXIT_FAILURE);
-}
-
 
 int main(int argc, char **argv) {
-	int c, dflag = 0;
 	pthread_t server;
-
-#ifndef WITH_TWITTER
-	while ((c = getopt (argc, argv, "ds:n:")) != -1){
-#else
-	while ((c = getopt (argc, argv, "ds:n:u:p:")) != -1){
-#endif /* WITH_TWITTER */
-		switch (c) {
-		case 'd':
-			dflag = 1;
-			break;
-		case 'n':
-			buffer_size = atoi(optarg);
-			if(buffer_size > MAX_STACK_SIZE){
-				fprintf(stderr, "Buffer Size %d "
-					      	"is greater than %d. "
-				      		"Please increase MAX_STACK_SIZE in clipme.h\n",
-				  		buffer_size, MAX_STACK_SIZE);
-				buffer_size = MAX_STACK_SIZE;
-			}		
-			break;
-		case 's':
-			sock_path = optarg;
-			break;
-#ifdef WITH_TWITTER
-		case 'u':
-                	user = optarg;
-                        break;
-                case 'p':
-                        pass = optarg;
-                        break;
-#endif /* WITH_TWITTER */
-		default :
-			usage();
-		}
-	}
-	if(sock_path == NULL || buffer_size <= 0)
-		usage();
-	/* daemon */
+	config = parse_args(argc, argv);	
 	stack_init();
-	if(dflag > 0){
+	/* daemon */
+	if(config->daemon > 0){
 		pid_t pid = fork();
 		if(pid > 0){
 			printf("%d\n", pid+1);
@@ -443,7 +389,7 @@ int main(int argc, char **argv) {
 	signal(SIGHUP, stack_clear_sig);
 
 	pthread_mutex_init(&mutex, NULL);
-	pthread_create(&server, NULL, (void *)ulisten, NULL);
+	pthread_create(&server, NULL, (void *) ulisten, NULL);
 	if(xlaunch() > 0)
 		return EXIT_FAILURE;
 	return EXIT_SUCCESS;

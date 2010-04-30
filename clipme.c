@@ -10,24 +10,20 @@
  */
 
 #include "clipme.h"
-
-void usage(void) {
-	(void) fprintf(stderr, 
-			"\nUsage :\n\tclipme -s /path/to/socket < cmd\n\n");
-	exit(EXIT_FAILURE);
-}	
+#include "config.h"
 
 int main(int argc, char **argv) {
 	int c, dflag = 0, bflag = 0;
 	pthread_t server;
 	/* client */
 	char *command = NULL, *response = NULL;
+	char *home = NULL, *conf = NULL;
 	struct sockaddr_un con;
 	int fd = 0;
 	size_t s;
 
 
-	while ((c = getopt (argc, argv, "s:")) != -1){
+	while ((c = getopt (argc, argv, "s:c:")) != -1){
 		switch (c) {
 		case 's':
 			sock_path = optarg;
@@ -36,11 +32,9 @@ int main(int argc, char **argv) {
 			usage();
 		}
 	}
-	/*if(sock_path == NULL)
-		usage();*/
-	//if(command == NULL){
+	if(command == NULL){
 		/* get\n\0 */
-/*		if((command = (char *) malloc(sizeof(char)*5)) == NULL){
+		if((command = (char *) malloc(sizeof(char)*5)) == NULL){
 			perror("malloc");
 			return EXIT_FAILURE;
 		}
@@ -68,7 +62,6 @@ int main(int argc, char **argv) {
 		perror("connect");
 		return EXIT_FAILURE;
 	}	
-	return EXIT_SUCCESS;*/
-	parse_conf();
+	return EXIT_SUCCESS;
 }
 

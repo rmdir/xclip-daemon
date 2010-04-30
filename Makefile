@@ -1,26 +1,34 @@
-all :
-	cc -O2 clipmed.c netstrings.c xclib.c -o clipmed -DDAEMON -lX11 -lXfixes -lXmu -lpthread
+CC=cc
+LEX=flex
+YACC=bison -y -d
+CFLAGS=-g -DWITH_TWITTER
+LDFLAGS=-lX11 -lXfixes -lXmu -lpthread -lcurl -lfl
+RM=rm -vf
+INSTALL=install
 
-client :
-	cc -g clipme.c netstrings.c -o clipme
+all : common server client
+common : 
+	$(LEX) -o config_lex.c config.l 
+	$(YACC) -o config_yy.c config.yy
+	$(CC) $(CFLAGS) -c config_lex.c
+	$(CC) $(CFLAGS) -c config_yy.c	
+	$(CC) $(CFLAGS) -c netstrings.c
+
+server :
+	$(CC) $(CFLAGS) -c clipmed.c 
+	$(CC) $(CFLAGS) -c xclib.c 
+	$(CC) $(CFLAGS) -o clipmed clipmed.o netstrings.o config_yy.o config_lex.o xclib.o $(LDFLAGS) 
+
+client : 
+	$(CC) $(CFLAGS) -c clipme.c 
+	$(CC) $(CFLAGS) -o clipme netstrings.o config_yy.o config_lex.o $(LDFLAGS) 
 
 clean :
-	rm -vf *~ clipme clipmed config_lex.c config_yy.c config_yy.h
+	$(RM) *~ clipme clipmed config_lex.c config_yy.c config_yy.h *.o
 
 install :
-	install -svbm 755 clipme /usr/local/bin/ 
+	$(INSTALL) -d /usr/local/bin/
+	$(INSTALL) -svbm 755 clipme /usr/local/bin/ 
 
-debug : 
-	cc -g -Wall clipmed.c netstrings.c xclib.c -o clipmed -DDAEMON -lX11 -lXfixes -lXmu -lpthread
 
-twitter : 
-	cc -g clipmed.c xclib.c netstrings.c -o clipmed -DDAEMON -DWITH_TWITTER -lcurl -lX11 -lXfixes -lXmu -lpthread
 
-help :
-	@echo "one of all clean install debug twitter"
-
-config :
-	flex -o config_lex.c config.l 
-	bison -y -d -o config_yy.c config.yy
-	cc -g -c config_lex.c
-	cc -g -c config_yy.c	

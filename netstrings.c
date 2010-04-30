@@ -1,3 +1,15 @@
+/*
+ * ----------------------------------------------------------------------------
+ * "THE BEER-WARE LICENSE" (Revision 42):
+ * <joris.dedieu@gmail.com> wrote this file. As long as you retain this notice you
+ * can do whatever you want with this stuff. If we meet some day, and you think
+ * this stuff is worth it, you can buy me a beer in return. Joris Dedieu
+ * ----------------------------------------------------------------------------
+ *
+ * $Id$
+ *
+ */
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -9,15 +21,6 @@
 int netprintf(int socket, const char* format, ...);
 char *netread(int socket);
 
-
-inline void free_conf(struct config *conf) {
-	if(conf->sock_path != NULL) free(conf->sock_path);
-#ifdef WITH_TWITTER
-	if(conf->user != NULL) free(conf->user);
-	if(conf->pass !=NULL) free(conf->pass);
-#endif /* WITH_TWITTER */
-	free(conf);
-}
 
 /* Write to socket */
 int netprintf(int socket, const char* format, ...){

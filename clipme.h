@@ -10,6 +10,9 @@
  *
  */
 
+#ifndef CLIPME_H
+#define CLIPME_H
+
 //unix
 #include <ctype.h>
 #include <stdio.h>
@@ -79,7 +82,6 @@ struct stack {
 extern int netprintf(int socket,const char* format, ...);
 extern char *netread(int socket);
 static int stack_init(void); 
-static void usage(void);
 static void clean_exit(int signum);
 static void get_selection(void);
 static int xlaunch(void);
@@ -91,3 +93,4 @@ void ulisten(void);
 int push(const char *s, unsigned long l); 
 struct clip_entry *get_one(int n); 
 
+#endif /* CLIPME_H */
