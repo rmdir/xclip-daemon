@@ -6,7 +6,6 @@
  * this stuff is worth it, you can buy me a beer in return. Joris Dedieu
  * ----------------------------------------------------------------------------
  *
- * $Id:  $
  *
  */
 
@@ -108,7 +107,7 @@ struct config *init_config(void){
 
 struct config *parse_args(int argc, char **argv) {
 	int c, i, n = 0, dflag = 0, bflag = 0;
-	char *sockpath, *confpath, *command, *buff;
+	char *sockpath = NULL , *confpath = NULL, *command, *buff;
 	size_t l;
 	struct config *conf;
 	while ((c = getopt (argc, argv, "s:n:dh")) != -1) {
@@ -131,6 +130,7 @@ struct config *parse_args(int argc, char **argv) {
 		}
 	}
 	command = NULL;
+	buff = NULL;
 	for(i = optind; i < argc; i++) {
 		buff = command;
 		l = sizeof(char) * (strlen(buff) + strlen(argv[i]) + 2); 
