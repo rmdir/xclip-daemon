@@ -79,7 +79,7 @@ struct stack {
 
 
 
-extern int netprintf(int socket,const char* format, ...);
+extern int netprintf(int socket,const char *format, ...);
 extern char *netread(int socket);
 extern void usage(void);
 extern struct config *parse_args(int argc, char **argv);

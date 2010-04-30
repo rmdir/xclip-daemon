@@ -21,7 +21,7 @@ server :
 
 client : 
 	$(CC) $(CFLAGS) -c clipme.c 
-	$(CC) $(CFLAGS) -o clipme netstrings.o config_yy.o config_lex.o $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o clipme netstrings.o config_yy.o config_lex.o clipme.o $(LDFLAGS) 
 
 clean :
 	$(RM) *~ clipme clipmed config_lex.c config_yy.c config_yy.h *.o

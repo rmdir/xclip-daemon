@@ -37,13 +37,13 @@ int main(int argc, char **argv) {
 	}
 	bzero(&con,sizeof(con)); 
 	con.sun_family = AF_UNIX;
-	strcpy(con.sun_path, sock_path);
+	strcpy(con.sun_path, conf->sockpath);
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
 		perror("socket");
 		return EXIT_FAILURE;
 	}
 	if (connect(fd, (struct sockaddr *) &con, sizeof(con)) == 0){
-		(void) netprintf(fd,&command);
+		(void) netprintf(fd,command);
 		while((response = netread(fd)) != NULL) {
 			(void) printf("%s\n",response);
 		}

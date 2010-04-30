@@ -46,10 +46,13 @@ static char *sockpath, *user, *pass;
 %%
 
 conf: 
-
-    	|line
+    	|lines
 	;
 
+lines:
+     	line lines
+	|line
+	;
 
 line: 	
     		sockline EOL
@@ -213,7 +216,7 @@ struct config *real_read_config(const char *path) {
 		fprintf(stderr, "error init_config\n");
 		return NULL;
 	}
-	conf->sockpath = sockpath;
+	if(sockpath != NULL) conf->sockpath = sockpath;
 	conf->number = (size_t) number;
 	conf->user = user;
 	conf->pass = pass;
