@@ -1,0 +1,26 @@
+##########################################
+#                                        # 
+#  Sample configuration file for clipme  #
+#  daemon and client                     #
+#  by default this file should be named  #
+#  ~/.clipmerc or ~/.config/clipmerc     #
+#  You can specify an alternate path     #
+#  using the -f switch in command line   #
+#                                        #
+##########################################
+
+#this is a comment
+
+#number of items to store (default 20)
+size 20
+
+#path to the socket (default /var/tmp/$USER.cmsock)
+socket /var/tmp/me.cmsock
+
+#want clipmed to run in background
+daemon
+
+#if you want to tweet your buffers
+user me
+pass mysecretpassword
+ 
