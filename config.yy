@@ -109,7 +109,7 @@ struct config *init_config(void){
 
 struct config *parse_args(int argc, char **argv) {
 	int c, i, n = 0, dflag = 0;
-	char *sockpath = NULL , *confpath = NULL, *command, *buff;
+	char *sockpath = NULL , *confpath = NULL, *command, *buff, *arg;
 	size_t l;
 	struct config *conf;
 	while ((c = getopt (argc, argv, "s:n:dh")) != -1) {
@@ -135,15 +135,17 @@ struct config *parse_args(int argc, char **argv) {
 	buff = NULL;
 	for(i = optind; i < argc; i++) {
 		buff = command;
-		l = sizeof(char) * (strlen(buff) + strlen(argv[i]) + 2); 
-		if(command == NULL)
-			command = (char *) malloc(l); 
-		else command = (char *) realloc(command, l);
-		if(command == NULL) {
-			perror("malloc");
-			return NULL;
+		arg = argv[i];
+		l = sizeof(char) * (strlen(arg) + 2); 
+		if(buff == NULL) {
+			if((command = (char *) malloc(l)) != NULL) 
+				command = strndup(arg,l);
 		}
-		(void) snprintf(command, l, "%s %s", buff, argv[i]);
+		else {
+			l += sizeof(char) * strlen(buff);
+			if((command = (char *) realloc(command, l)) != NULL)
+				(void) snprintf(command, l, "%s %s", buff, arg);
+		}
 	}
 	if(buff) free(buff);
 	if((conf = read_config(confpath)) == NULL) {
