@@ -81,11 +81,13 @@ struct stack {
 
 extern int netprintf(int socket,const char *format, ...);
 extern char *netread(int socket);
-extern void usage(void);
+extern void client_usage(void);
+extern void server_usage(void);
 extern struct config *parse_args(int argc, char **argv);
 int stack_init(void); 
 void clean_exit(int signum);
 void get_selection(void);
+void usage(void);
 int xlaunch(void);
 int stack_clear(void);
 int _stack_clear(void);

@@ -76,7 +76,18 @@ int yyerror (char *s) {
 	return EXIT_FAILURE;
 }
 
-void usage(void) {
+void client_usage(void) {
+	fprintf(stderr,
+		"Usage : \n\t"
+		"clipme [-s /path/to/socket.sock] [command] [args]\n"
+		);
+	exit(EXIT_FAILURE);
+}
+void server_usage(void) {
+	fprintf(stderr,
+		"Usage : \n\t" 
+		"clipmed [-s args] [-u args] [-p args] [-d]\n"
+		);
 	exit(EXIT_FAILURE);
 }
 

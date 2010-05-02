@@ -368,8 +368,9 @@ void clean_exit(int signum) {
 	exit(0);
 }
 
-
-
+void usage(void) {
+	server_usage();
+}	
 
 int main(int argc, char **argv) {
 	pthread_t server;

@@ -12,6 +12,10 @@
 #include "clipme.h"
 #include "config.h"
 
+void usage(void) {
+	client_usage();
+}
+
 int main(int argc, char **argv) {
 	/* client */
 	struct sockaddr_un con;
