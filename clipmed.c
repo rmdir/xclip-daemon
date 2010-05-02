@@ -250,7 +250,7 @@ void ulisten(void) {
 					netprintf(cfd,"Protocol error");
 			}
 			close(cfd);
-			if(args != NULL) free(args);
+			args = NULL;
 		}
 	}
 }
@@ -362,6 +362,7 @@ void clean_exit(int signum) {
 	if(config->sockpath != 0) {
 		unlink(config->sockpath);
 	}
+	free_config(config);
 	XDestroyWindow(display, win);
 	if(display) XCloseDisplay(display);
 	exit(0);
@@ -390,8 +391,11 @@ int main(int argc, char **argv) {
 
 	pthread_mutex_init(&mutex, NULL);
 	pthread_create(&server, NULL, (void *) ulisten, NULL);
-	if(xlaunch() > 0)
+	if(xlaunch() > 0) {
+		clean_exit(0);
 		return EXIT_FAILURE;
+	}
+	clean_exit(0);
 	return EXIT_SUCCESS;
 }
 

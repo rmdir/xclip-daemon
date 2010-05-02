@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
 		s = sizeof(command)+1;
 		if(getline(&command, &s, stdin) < 0){
 			perror("getline");
+			free_config(conf);
 			return EXIT_FAILURE;
 		}
 	}
@@ -40,6 +41,7 @@ int main(int argc, char **argv) {
 	strcpy(con.sun_path, conf->sockpath);
 	if((fd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0){
 		perror("socket");
+		free_config(conf);
 		return EXIT_FAILURE;
 	}
 	if (connect(fd, (struct sockaddr *) &con, sizeof(con)) == 0){
@@ -51,8 +53,10 @@ int main(int argc, char **argv) {
 	}
 	else {
 		perror("connect");
+		free_config(conf);
 		return EXIT_FAILURE;
 	}	
+	free_config(conf);
 	return EXIT_SUCCESS;
 }
 

@@ -26,6 +26,7 @@ struct config {
 };
 
 void usage(void);
+void free_config(struct config *config);
 struct config *init_config(void);
 struct config *parse_args(int argc, char **argv);
 struct config *real_read_config(const char *path);
