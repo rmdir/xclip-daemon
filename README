@@ -21,11 +21,10 @@ $ echo "3:del,"|nc -U /home/joris/clip.sock
 
 you can use the client
 
-$ echo "get 1"| clipme -s /home/joris/clip.sock
+$ echo "get 1"| clipme 
 xclip-daemo
 
-$ echo "del"| clipme -s /home/joris/clip.sock
-
+$ clipme set J\'aime le son du cor le soir au fond des bois.
 
 
 LICENCE

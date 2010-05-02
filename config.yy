@@ -79,14 +79,14 @@ int yyerror (char *s) {
 void client_usage(void) {
 	fprintf(stderr,
 		"Usage : \n\t"
-		"clipme [-s /path/to/socket.sock] [command] [args]\n"
+		"clipme [-h] [-s /path/to/socket.sock] [-f /path/to/clipmerc] [command [args]]\n"
 		);
 	exit(EXIT_FAILURE);
 }
 void server_usage(void) {
 	fprintf(stderr,
 		"Usage : \n\t" 
-		"clipmed [-s args] [-u args] [-p args] [-d]\n"
+		"clipmed [-hd] [-n size of the history] [-s /path/to/socket.sock] [-f /path/to/clipmerc] [-u user] [-p pass]\n"
 		);
 	exit(EXIT_FAILURE);
 }

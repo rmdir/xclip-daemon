@@ -1,0 +1,44 @@
+=head1 NAME
+
+clipmerc - clipmed and clipme configuration file
+
+=head1 DESCRIPTION
+
+Set various options for clipmed and clipme. Default location
+is ~/.clipmerc or ~/.config/clipmerc, but an alternate location
+can be specified with a command line option.
+
+=head1 FORMAT
+
+Every empty lines and every line that begin by # are ignored.
+each option is specified whith the form :
+	key [value]
+
+B<daemon> ask clipmed to be a daemon
+
+B<socket p>  where p is the absolute socket path. Specify an alternative socket (default is /var/tmp/$USER.cmsock)
+
+B<size n> where n is a positive integer. Specify the size of the selection (default 20).
+
+B<user s> where s is a string. Twitter account user name.
+
+B<pass s> where s is a string. Twitter account password.
+Twitter feature is just a devloppement sample for a future 
+plugin architecture. It should change.
+
+=head1 FILES
+
+	/usr/local/share/examples/clipme/clipmerc.sample
+	~/.clipmerc
+	~/.config/clipmerc
+
+
+=head1 AUTHOR
+
+Joris Dedieu <joris@gmail.com>
+
+=head1 SEE ALSO
+
+clipmed(1), clipme(1), xclip(1), xsel(1)
+  
+

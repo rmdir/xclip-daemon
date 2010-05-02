@@ -1,0 +1,83 @@
+=head1 NAME
+
+clipmed - X selection history daemon
+
+=head1 SYNOPSIS
+
+clipmed [-hd] [-n size of the history] [-s /path/to/socket.sock] [-f /path/to/clipmerc] [-u user] [-p pass]
+
+=head1 DESCRIPTION
+
+clipmed is a daemon that listen for xevent "selection change" and store selection history
+in a buffer. Stored items should be retrive via an unix socket. clipmed communication
+use the netstrings format.
+
+=head1 OPTIONS
+
+B<-h> display a short help text
+
+B<-d> run as a daemon
+
+B<-n> specify the size of the selection history (default 20) 
+
+B<-s> specify an alternate socket (default is /var/tmp/$USER.cmsock)
+
+B<-f> specify an alternate config file (default is ~/.clipmerc or ~/.config/clipmerc)
+
+B<-u> twitter user name (for use twitter feature)
+
+B<-p> twitter password
+
+=head1 PROTOCOL
+
+clipmed understands the following commands
+
+B<get [arg]> where arg is an integer. Return the "arg" entry from the
+selection history. If arg is not given return all entries. 
+First entry is 0. 
+
+B<siz> return the number of items store in selection history.
+
+B<del> clear selection history.
+
+B<set arg> push the srting "arg" in selection history
+
+B<twt arg> post item number "arg" on twitter. 
+twt need user and pass to be set as daemon options.
+This feature is just a devloppement sample for a future 
+plugin architecture. It should change.
+
+Commands and replies are send in netstrings format :
+
+	size:string,
+
+
+=head1 EXAMPLES
+
+Get all items from a daemon listening on /home/me/.me.sock
+
+	echo -n "3:get," | nc -U /home/me/.me.sock
+
+Get the first item
+
+	echo -n "5:get 0," | nc -U /home/me/.me.sock
+
+
+=head1 EXIT STATUS
+
+clipmed returns zero on succed and a non zero value on failure.
+
+=head1 KNOWN BUGS
+
+Currently clipmed don't exit properly. It's an Xlib
+related bug we are working one.
+
+=head1 AUTHOR
+
+Joris Dedieu <joris@gmail.com>
+
+=head1 SEE ALSO
+
+clipme(1), clipmerc(5), xclip(1), xsel(1)
+  
+

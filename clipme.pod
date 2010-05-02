@@ -1,0 +1,75 @@
+=head1 NAME
+
+clipme - clipmed command line client
+
+=head1 SYNOPSIS
+
+clipme [-s /path/to/socket.sock] [-f /path/to/clipmerc] [command [args]]
+
+=head1 DESCRIPTION
+
+A c client for managing clipboard selection history. clipme
+connect to clipmed socket, send the command and print the 
+result in stdout.
+
+=head1 OPTIONS
+
+B<-h> display a short help text
+
+B<-s> specify an alternate socket (default is /var/tmp/$USER.cmsock)
+
+B<-f> specify an alternate config file (default is ~/.clipmerc or ~/.config/clipmerc)
+
+=head1 USAGE
+
+if a command is given clipme send the command to clipmed socket 
+and print the result in stdin
+
+Command should be one of :
+
+B<get [arg]> where arg is an integer. Return the "arg" entry from the
+selection history. If arg is not given return all entries. 
+First entry is 0. 
+
+B<siz> return the number of items store in selection history.
+
+B<del> clear selection history.
+
+B<set arg> push the srting "arg" in selection history
+
+B<twt arg> post item number "arg" on twitter. 
+twt need user and pass to be set as daemon options.
+This feature is just a devloppement sample for a future 
+plugin architecture. It should change.
+
+If no command is provide clipme wait for one in stdin
+
+=head1 EXAMPLES
+
+Get all items from a daemon listening on /home/me/.me.sock
+
+	clipme -s /home/me/.me.sock get
+
+On an alternate way
+
+	echo get | clipme -s /home/me/.me.sock 
+
+Clear the history an use /home/me/.clipme.conf as a config file
+	
+	clipme -f /home/me/.clipme.conf del
+
+=head1 EXIT STATUS
+
+clipme returns zero on succed and a non zero value on failure.
+Most common error messages are "Protocol error" if an incorrect 
+command is given and "Out of range clip" if a clip > siz is asked.
+
+=head1 AUTHOR
+
+Joris Dedieu <joris@gmail.com>
+
+=head1 SEE ALSO
+
+clipmed(1), clipmerc(5), xclip(1), xsel(1)
+  
+
